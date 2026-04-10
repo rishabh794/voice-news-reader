@@ -1,6 +1,7 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import Navbar from './components/Navbar';
 
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -11,13 +12,7 @@ import History from './pages/History';
 function App() {
   return (
     <Router>
-      <nav className="p-2.5 border-b border-gray-300 mb-5">
-        <Link to="/" className="mr-2.5">Home</Link>
-        <Link to="/login" className="mr-2.5">Login</Link>
-        <Link to="/register" className="mr-2.5">Register</Link>
-        <Link to="/dashboard" className="mr-2.5">Dashboard</Link>
-        <Link to="/history">History</Link>
-      </nav>
+      <Navbar />
 
       <Routes>
         <Route path="/" element={<Home />} />
