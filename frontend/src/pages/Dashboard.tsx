@@ -1,4 +1,4 @@
-import React, { useState, useEffect , useRef } from 'react';
+import React, { useState, useEffect , useRef} from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { fetchNews } from '../services/newsApi';
 import API from '../services/api';
@@ -8,10 +8,10 @@ const Dashboard = () => {
     const [articles, setArticles] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const hasFetched = useRef(false);
 
     const location = useLocation();
     const navigate = useNavigate();
+    const lastExecutedQuery = useRef<string | null>(null);
 
     const executeSearch = async (searchQuery: string, skipHistorySave = false) => {
         if (!searchQuery.trim()) return;
@@ -41,17 +41,22 @@ const Dashboard = () => {
     };
 
    useEffect(() => {
-        if (location.state && location.state.query) {
-            const { query: historyQuery, fromHistory } = location.state;
-            
-            setQuery(historyQuery);
-            
-            if (!hasFetched.current) {
-                executeSearch(historyQuery, fromHistory);
-                hasFetched.current = true; 
-            }
+        if (!location.state || (!location.state.voiceQuery && !location.state.query)) {
+            lastExecutedQuery.current = null;
+            return;
+        }
 
-            navigate(location.pathname, { replace: true });
+        const incomingQuery = location.state.voiceQuery || location.state.query;
+        const fromHistory = location.state.fromHistory || false;
+
+        if (incomingQuery && lastExecutedQuery.current !== incomingQuery) {
+            
+            lastExecutedQuery.current = incomingQuery;
+
+            setQuery(incomingQuery);
+            executeSearch(incomingQuery, fromHistory);
+            
+            navigate(location.pathname, { replace: true, state: {} });
         }
     }, [location.state, navigate, location.pathname]);
 
@@ -78,29 +83,37 @@ const Dashboard = () => {
 
             {error && <p className="text-red-500 font-bold mb-5">{error}</p>}
 
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-5">
-                {articles.map((article, index) => (
-                    <div key={index} className="border border-gray-300 p-4 flex flex-col bg-white">
-                        {article.image && (
-                            <img 
-                                src={article.image} 
-                                alt="News thumbnail" 
-                                className="w-full h-[150px] object-cover mb-2.5" 
-                            />
-                        )}
-                        <h3 className="text-lg m-0 mb-2.5 font-semibold leading-tight">{article.title}</h3>
-                        <p className="text-sm text-gray-600 grow mb-4">{article.description}</p>
-                        <a 
-                            href={article.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="mt-auto text-blue-600 hover:text-blue-800 hover:underline"
-                        >
-                            Read Full Article
-                        </a>
-                    </div>
-                ))}
-            </div>
+            {/* 🚨 THE NEW LOADING OVERLAY 🚨 */}
+            {loading ? (
+                <div className="flex flex-col justify-center items-center py-20">
+                    <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600 mb-4"></div>
+                    <h3 className="text-xl font-bold text-blue-600 animate-pulse">Fetching the latest articles...</h3>
+                </div>
+            ) : (
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-5">
+                    {articles.map((article, index) => (
+                        <div key={index} className="border border-gray-300 p-4 flex flex-col bg-white hover:shadow-lg transition-shadow">
+                            {article.image && (
+                                <img 
+                                    src={article.image} 
+                                    alt="News thumbnail" 
+                                    className="w-full h-[150px] object-cover mb-2.5 rounded" 
+                                />
+                            )}
+                            <h3 className="text-lg m-0 mb-2.5 font-semibold leading-tight">{article.title}</h3>
+                            <p className="text-sm text-gray-600 grow mb-4 line-clamp-3">{article.description}</p>
+                            <a 
+                                href={article.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="mt-auto text-blue-600 hover:text-blue-800 hover:underline font-semibold"
+                            >
+                                Read Full Article
+                            </a>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
