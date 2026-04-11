@@ -43,6 +43,8 @@ const Dashboard = () => {
                     const topStory = data[0].title;
                     speakText(`Here is the latest news on ${searchQuery}. The top story is: ${topStory}`);
                 }
+                sessionStorage.setItem('dashboard_query', searchQuery);
+                sessionStorage.setItem('dashboard_articles', JSON.stringify(data));
             }
             
             if (!skipHistorySave) {
@@ -63,21 +65,30 @@ const Dashboard = () => {
     };
 
     useEffect(() => {
-        if (!location.state || (!location.state.voiceQuery && !location.state.query)) {
-            lastExecutedQuery.current = null;
-            return;
-        }
+        const incomingQuery = location.state?.voiceQuery || location.state?.query;
+        const fromHistory = location.state?.fromHistory || false;
+        const isVoice = !!location.state?.voiceQuery;
 
-        const incomingQuery = location.state.voiceQuery || location.state.query;
-        const fromHistory = location.state.fromHistory || false;
-        const isVoice = !!location.state.voiceQuery;
+        if (incomingQuery) {
+            if (lastExecutedQuery.current !== incomingQuery) {
+                lastExecutedQuery.current = incomingQuery;
+                setQuery(incomingQuery);
+                
+                executeSearch(incomingQuery, fromHistory, isVoice);
+                navigate(location.pathname, { replace: true, state: {} });
+            }
+        } else {
+            if (!lastExecutedQuery.current) {
+                const savedQuery = sessionStorage.getItem('dashboard_query');
+                const savedArticles = sessionStorage.getItem('dashboard_articles');
 
-        if (incomingQuery && lastExecutedQuery.current !== incomingQuery) {
-            lastExecutedQuery.current = incomingQuery;
-            setQuery(incomingQuery);
-            
-            executeSearch(incomingQuery, fromHistory, isVoice);
-            navigate(location.pathname, { replace: true, state: {} });
+                if (savedQuery && savedArticles) {
+                    setQuery(savedQuery);
+                    setArticles(JSON.parse(savedArticles));
+                    
+                    lastExecutedQuery.current = savedQuery;
+                }
+            }
         }
     }, [location.state, navigate, location.pathname]);
 
