@@ -80,13 +80,20 @@ const Navbar = () => {
                         History
                     </Link>
 
-                    {/* push logout to far right */}
-                    <button
-                        onClick={handleLogout}
-                        className="ml-auto text-xs tracking-wide text-red-400 px-4 py-1.5 rounded-md border border-red-400/30 bg-red-400/8 hover:bg-red-400/15 hover:border-red-400/50 cursor-pointer transition-all duration-200"
-                    >
-                        Logout
-                    </button>
+                    <div className="ml-auto flex items-center gap-4">
+                        {authContext.user?.email && (
+                            <span className="text-xs tracking-wide text-slate-400">
+                                Welcome, <span className="text-slate-100 font-medium">{authContext.user.email}</span>
+                            </span>
+                        )}
+                        
+                        <button
+                            onClick={handleLogout}
+                            className="text-xs tracking-wide text-red-400 px-4 py-1.5 rounded-md border border-red-400/30 bg-red-400/8 hover:bg-red-400/15 hover:border-red-400/50 cursor-pointer transition-all duration-200"
+                        >
+                            Logout
+                        </button>
+                    </div>
                 </>
             )}
         </nav>
