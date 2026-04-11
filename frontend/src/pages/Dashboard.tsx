@@ -1,69 +1,101 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect , useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { fetchNews } from '../services/newsApi';
+import API from '../services/api';
 
 const Dashboard = () => {
     const [query, setQuery] = useState('');
     const [articles, setArticles] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const hasFetched = useRef(false);
 
-    const handleSearch = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!query.trim()) return;
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    const executeSearch = async (searchQuery: string, skipHistorySave = false) => {
+        if (!searchQuery.trim()) return;
 
         setLoading(true);
         setError('');
         
         try {
-            const data = await fetchNews(query);
-            if (data.length === 0) {
-                setError('No articles found. Try another search.');
-            }
+            const data = await fetchNews(searchQuery);
+            if (data.length === 0) setError('No articles found. Try another search.');
             setArticles(data);
             
-            
-        } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+            if (!skipHistorySave) {
+                API.post('/history', { query: searchQuery }).catch(err => console.error("Failed to save history", err));
+            }
+        } catch (err : any) {  // eslint-disable-line @typescript-eslint/no-explicit-any
             setError('Failed to fetch news. Check the console.');
-            console.error("Error in Dashboard:", err);
+            console.error(err);
         } finally {
             setLoading(false);
         }
     };
 
-    return (
-        <div className="p-5 max-w-5xl mx-auto">
-            <h2>News Dashboard</h2>
+    const handleManualSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        executeSearch(query, false); 
+    };
+
+   useEffect(() => {
+        if (location.state && location.state.query) {
+            const { query: historyQuery, fromHistory } = location.state;
             
-            {/* 1. The Search Bar */}
-            <form onSubmit={handleSearch} className="mb-8 flex gap-2.5">
+            setQuery(historyQuery);
+            
+            if (!hasFetched.current) {
+                executeSearch(historyQuery, fromHistory);
+                hasFetched.current = true; 
+            }
+
+            navigate(location.pathname, { replace: true });
+        }
+    }, [location.state, navigate, location.pathname]);
+
+    return (
+        <div className="p-5 max-w-[1200px] mx-auto">
+            <h2 className="text-2xl font-bold mb-5">News Dashboard</h2>
+            
+            <form onSubmit={handleManualSearch} className="mb-8 flex gap-2.5">
                 <input 
                     type="text" 
-                    placeholder="Search for news (e.g., Technology, Space)..." 
+                    placeholder="Search for news..." 
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    className="p-2.5 w-80 border border-black"
+                    className="p-2.5 w-[300px] border border-black focus:outline-none focus:ring-1 focus:ring-black"
                 />
-                <button type="submit" disabled={loading} className="p-2.5 border border-black cursor-pointer">
+                <button 
+                    type="submit" 
+                    disabled={loading} 
+                    className="p-2.5 border border-black cursor-pointer hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                     {loading ? 'Searching...' : 'Search'}
                 </button>
             </form>
 
-            {error && <p className="text-red-600 font-bold">{error}</p>}
+            {error && <p className="text-red-500 font-bold mb-5">{error}</p>}
 
-            {/* 2. The Raw Data Grid */}
             <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-5">
                 {articles.map((article, index) => (
-                    <div key={index} className="border border-gray-300 p-4 flex flex-col">
+                    <div key={index} className="border border-gray-300 p-4 flex flex-col bg-white">
                         {article.image && (
                             <img 
                                 src={article.image} 
                                 alt="News thumbnail" 
-                                className="w-full h-36 object-cover mb-2.5" 
+                                className="w-full h-[150px] object-cover mb-2.5" 
                             />
                         )}
-                        <h3 className="text-lg mb-2.5">{article.title}</h3>
-                        <p className="text-sm text-gray-600 flex-grow">{article.description}</p>
-                        <a href={article.url} target="_blank" rel="noopener noreferrer" className="mt-4 text-blue-600">
+                        <h3 className="text-lg m-0 mb-2.5 font-semibold leading-tight">{article.title}</h3>
+                        <p className="text-sm text-gray-600 grow mb-4">{article.description}</p>
+                        <a 
+                            href={article.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="mt-auto text-blue-600 hover:text-blue-800 hover:underline"
+                        >
                             Read Full Article
                         </a>
                     </div>
