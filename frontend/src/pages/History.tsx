@@ -32,41 +32,82 @@ const History = () => {
     };
 
     return (
-        <div className="p-5 max-w-3xl mx-auto">
-            <h2>Your Search History</h2>
+        <div className="w-full max-w-4xl mx-auto mt-8 p-6 pt-10 bg-[#0d0d12] border border-gray-800/80 rounded-xl font-sans text-gray-200">
             
-            {loading && <p>Loading past searches...</p>}
-            {error && <p className="text-red-500">{error}</p>}
-
-            {!loading && history.length === 0 && (
-                <p>You haven't searched for anything yet!</p>
+            {/* Header section */}
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-800/60">
+                <div className="w-1.5 h-6 bg-cyan-600 rounded-sm"></div>
+                <h2 className="text-xl font-medium text-gray-100 font-mono uppercase tracking-wide">
+                    Query_Log
+                </h2>
+            </div>
+            
+            {/* System Status States */}
+            {loading && (
+                <div className="flex items-center gap-3 p-4 bg-[#13131a] border border-gray-800/50 rounded-lg">
+                    <span className="w-2 h-2 rounded-full bg-cyan-600 animate-pulse"></span>
+                    <p className="text-gray-400 font-mono text-sm">Retrieving historical data...</p>
+                </div>
+            )}
+            
+            {error && (
+                <div className="p-4 bg-red-950/20 border border-red-900/50 rounded-lg text-red-400 text-sm font-mono flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                    <p>{error}</p>
+                </div>
             )}
 
+            {!loading && history.length === 0 && !error && (
+                <div className="p-8 text-center bg-[#13131a] border border-gray-800/50 rounded-lg">
+                    <p className="text-gray-500 font-mono text-sm">No previous voice commands logged in this session.</p>
+                </div>
+            )}
+
+            {/* Data Table */}
             {!loading && history.length > 0 && (
-                <table className="w-full border-collapse mt-5">
-                    <thead>
-                        <tr className="bg-gray-100 border-b-2 border-black">
-                            <th className="p-2.5 text-left">Search Query</th>
-                            <th className="p-2.5 text-left">Date & Time</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {history.map((item, index) => (
-                            <tr 
-                                key={index} 
-                                onClick={() => handleRowClick(item.query)} 
-                                className="border-b border-gray-300 cursor-pointer hover:bg-gray-100 transition-colors"
-                            >
-                                <td className="p-2.5 font-bold text-blue-500">
-                                    {item.query}
-                                </td>
-                                <td className="p-2.5">
-                                    {new Date(item.timestamp).toLocaleString()}
-                                </td>
+                <div className="overflow-hidden border border-gray-800/80 rounded-lg bg-[#0d0d12]">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-[#13131a] border-b border-gray-800/80">
+                                <th className="p-4 text-xs font-mono text-cyan-600 uppercase tracking-wider font-medium w-2/3">
+                                    Search Query
+                                </th>
+                                <th className="p-4 text-xs font-mono text-gray-500 uppercase tracking-wider font-medium w-1/3">
+                                    Date & Time
+                                </th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-800/60">
+                            {history.map((item, index) => (
+                                <tr 
+                                    key={index} 
+                                    onClick={() => handleRowClick(item.query)} 
+                                    className="group cursor-pointer hover:bg-[#16161f] transition-colors duration-200"
+                                >
+                                    <td className="p-4">
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-gray-600 font-mono text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                                                &gt;
+                                            </span>
+                                            <span className="font-mono text-gray-300 group-hover:text-cyan-400 transition-colors">
+                                                {item.query}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-sm text-gray-500 font-mono">
+                                        {new Date(item.timestamp).toLocaleString(undefined, {
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             )}
         </div>
     );

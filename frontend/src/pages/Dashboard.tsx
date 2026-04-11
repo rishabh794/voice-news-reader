@@ -82,8 +82,7 @@ const Dashboard = () => {
     }, [location.state, navigate, location.pathname]);
 
     return (
-        <div className="p-5 max-w-[1200px] mx-auto">
-            <h2 className="text-2xl font-bold mb-5">News Dashboard</h2>
+        <div className="pt-20 px-5 pb-5 max-w-[1200px] mx-auto">
             
             <SearchBar 
                 query={query} 
