@@ -53,10 +53,10 @@ const VoiceAssistant = () => {
                     }
 
                     const intentRes = await API.post('/intent', { query: spokenText });
-                    const { action, topic } = intentRes.data;
+                    const fullPayload = intentRes.data;
 
-                    if (action === 'search' && topic) {
-                        navigate('/dashboard', { state: { voiceQuery: topic } });
+                    if (fullPayload.action === 'search' && fullPayload.topic) {
+                        navigate('/dashboard', { state: { agentPayload: fullPayload } });
                     }
 
                 } catch (error) {

@@ -2,6 +2,7 @@ import express from 'express';
 import { Groq } from 'groq-sdk';
 import dotenv from 'dotenv';
 import { verifyToken } from '../middleware/authMiddleware.ts';
+import { searchGNews } from '../services/tools.ts'; // 🚨 NEW IMPORT
 
 dotenv.config();
 
@@ -23,11 +24,6 @@ Rules for "topic":
 - If action is "search", extract the core subject (e.g., "Elon Musk", "quantum computing"). Ignore conversational filler.
 - If action is "history" or "unknown", set topic to null.
 
-Examples:
-User: "Hey, can you find me the latest on electric cars?" -> {"action": "search", "topic": "electric cars"}
-User: "Take me to my past searches" -> {"action": "history", "topic": null}
-User: "What is the weather today?" -> {"action": "unknown", "topic": null}
-
 Respond ONLY with pure JSON. Do not include markdown formatting or explanations.`;
 
 router.post('/', verifyToken,  async (req, res) => {
@@ -38,6 +34,7 @@ router.post('/', verifyToken,  async (req, res) => {
     }
 
     try {
+        // 1. The Fast Router Step
         const chatCompletion = await groq.chat.completions.create({
             model: MODEL,
             messages: [
@@ -45,27 +42,53 @@ router.post('/', verifyToken,  async (req, res) => {
                 { role: 'user', content: query.trim() },
             ],
             temperature: 0,
-            max_completion_tokens: 64, // JSON response is tiny — cap tokens to save cost & latency
+            max_completion_tokens: 64, 
             response_format: { type: 'json_object' },
         });
 
         const content = chatCompletion.choices[0]?.message?.content;
-        if (!content) {
-            return res.status(500).json({ error: 'Empty response from LLM.' });
-        }
+        if (!content) return res.status(500).json({ error: 'Empty response from LLM.' });
 
         let aiResponse: { action: string; topic: string | null };
         try {
             aiResponse = JSON.parse(content);
         } catch {
-            console.error('JSON parse error. Raw content:', content);
             return res.status(500).json({ error: 'LLM returned malformed JSON.' });
         }
 
-        if (!aiResponse.action || !['search', 'history', 'unknown'].includes(aiResponse.action)) {
-            return res.status(500).json({ error: 'LLM returned unexpected action value.' });
+        // 2. The Agentic Synthesis Step (If action is search)
+        if (aiResponse.action === 'search' && aiResponse.topic) {
+            console.log(`\n🤖 AGENT TRIGGERED: Fetching articles for "${aiResponse.topic}"...`);
+            
+            // Execute the Tool
+            const { rawArticles, llmObservation } = await searchGNews(aiResponse.topic);
+
+            let summary = `Here are the latest articles on ${aiResponse.topic}.`;
+
+            if (rawArticles.length > 0) {
+                // Feed the articles back to Llama 3 for a custom synthesis
+                const summaryPrompt = `You are an expert news anchor. Based ONLY on the following article headlines and descriptions, write a conversational, 2-sentence summary of the current events. Do not use external knowledge.\n\n${llmObservation}`;
+
+                const summaryCompletion = await groq.chat.completions.create({
+                    model: MODEL,
+                    messages: [{ role: 'user', content: summaryPrompt }],
+                    temperature: 0.3,
+                    max_completion_tokens: 150,
+                });
+                
+                summary = summaryCompletion.choices[0]?.message?.content || summary;
+            }
+
+            // Package the ultimate response!
+            return res.json({
+                action: 'search',
+                topic: aiResponse.topic,
+                summary: summary,    // Sent to TTS
+                articles: rawArticles // Sent to the UI Grid
+            });
         }
 
+        // 3. Fallback for 'history' or 'unknown' (Instant return)
         return res.json(aiResponse);
 
     } catch (error: unknown) {

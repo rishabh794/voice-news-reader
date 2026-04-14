@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { fetchNews } from '../services/newsApi';
 import API from '../services/api';
 
 import SearchBar from '../components/SearchBar';
@@ -26,33 +25,33 @@ const Dashboard = () => {
         window.speechSynthesis.speak(utterance);
     };
 
-    const executeSearch = async (searchQuery: string, skipHistorySave = false, isVoiceCommand = false) => {
+    const executeIntelligentSearch = async (searchQuery: string, skipHistorySave = false) => {
         if (!searchQuery.trim()) return;
 
         setLoading(true);
         setError('');
-        
+
         try {
-            const data = await fetchNews(searchQuery);
-            if (data.length === 0) {
-                setError('No articles found. Try another search.');
-                if (isVoiceCommand) speakText("I couldn't find any recent news on that topic.");
-            } else {
-                setArticles(data);
-                if (isVoiceCommand) {
-                    const topStory = data[0].title;
-                    speakText(`Here is the latest news on ${searchQuery}. The top story is: ${topStory}`);
+            const response = await API.post('/intent', { query: searchQuery });
+            const data = response.data;
+
+            if (data.action === 'search' && data.articles) {
+                setArticles(data.articles);
+                setQuery(data.topic);
+                
+                sessionStorage.setItem('dashboard_query', data.topic);
+                sessionStorage.setItem('dashboard_articles', JSON.stringify(data.articles));
+                
+                speakText(data.summary); 
+
+                if (!skipHistorySave) {
+                    API.post('/history', { query: data.topic }).catch(err => console.error("History save failed", err));
                 }
-                sessionStorage.setItem('dashboard_query', searchQuery);
-                sessionStorage.setItem('dashboard_articles', JSON.stringify(data));
+            } else {
+                 setError('No articles found for that topic.');
             }
-            
-            if (!skipHistorySave) {
-                API.post('/history', { query: searchQuery }).catch(err => console.error("Failed to save history", err));
-            }
-        } catch (err: any) {  // eslint-disable-line @typescript-eslint/no-explicit-any
+        } catch (err) {
             setError('Failed to fetch news. Check the console.');
-            if (isVoiceCommand) speakText("Sorry, I ran into a server error while fetching the news.");
             console.error(err);
         } finally {
             setLoading(false);
@@ -61,40 +60,59 @@ const Dashboard = () => {
 
     const handleManualSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        executeSearch(query, false, false); 
+        executeIntelligentSearch(query, false); 
     };
 
     useEffect(() => {
-        const incomingQuery = location.state?.voiceQuery || location.state?.query;
+        const agentPayload = location.state?.agentPayload;
+        const historyQuery = location.state?.query; 
         const fromHistory = location.state?.fromHistory || false;
-        const isVoice = !!location.state?.voiceQuery;
 
-        if (incomingQuery) {
-            if (lastExecutedQuery.current !== incomingQuery) {
-                lastExecutedQuery.current = incomingQuery;
-                setQuery(incomingQuery);
+        // SCENARIO 1: Came from Voice Command (Pre-fetched data)
+        if (agentPayload) {
+            if (lastExecutedQuery.current !== agentPayload.topic) {
+                lastExecutedQuery.current = agentPayload.topic;
                 
-                executeSearch(incomingQuery, fromHistory, isVoice);
+                setQuery(agentPayload.topic);
+                setArticles(agentPayload.articles || []);
+                
+                sessionStorage.setItem('dashboard_query', agentPayload.topic);
+                sessionStorage.setItem('dashboard_articles', JSON.stringify(agentPayload.articles || []));
+
+                if (agentPayload.summary) speakText(agentPayload.summary);
+
+                API.post('/history', { query: agentPayload.topic }).catch(console.error);
+
                 navigate(location.pathname, { replace: true, state: {} });
             }
-        } else {
-            if (!lastExecutedQuery.current) {
-                const savedQuery = sessionStorage.getItem('dashboard_query');
-                const savedArticles = sessionStorage.getItem('dashboard_articles');
+        } 
+        // SCENARIO 2: Came from History Page click (Needs to fetch)
+        else if (historyQuery) {
+            if (lastExecutedQuery.current !== historyQuery) {
+                lastExecutedQuery.current = historyQuery;
+                setQuery(historyQuery);
+                
+                // Fetch the news, but tell it to SKIP saving to history
+                executeIntelligentSearch(historyQuery, fromHistory);
+                
+                navigate(location.pathname, { replace: true, state: {} });
+            }
+        } 
+        // SCENARIO 3: Normal Page Load (Restore from Session)
+        else if (!lastExecutedQuery.current) {
+            const savedQuery = sessionStorage.getItem('dashboard_query');
+            const savedArticles = sessionStorage.getItem('dashboard_articles');
 
-                if (savedQuery && savedArticles) {
-                    setQuery(savedQuery);
-                    setArticles(JSON.parse(savedArticles));
-                    
-                    lastExecutedQuery.current = savedQuery;
-                }
+            if (savedQuery && savedArticles) {
+                setQuery(savedQuery);
+                setArticles(JSON.parse(savedArticles));
+                lastExecutedQuery.current = savedQuery;
             }
         }
     }, [location.state, navigate, location.pathname]);
 
     return (
         <div className="pt-20 px-5 pb-5 max-w-[1200px] mx-auto">
-            
             <SearchBar 
                 query={query} 
                 setQuery={setQuery} 
