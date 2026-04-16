@@ -2,8 +2,7 @@ import express from 'express';
 import { Groq } from 'groq-sdk';
 import dotenv from 'dotenv';
 import { verifyToken } from '../middleware/authMiddleware.ts';
-import { searchGNews } from '../services/tools.ts'; // 🚨 NEW IMPORT
-
+import { searchGNews } from '../services/tools.ts'; 
 dotenv.config();
 
 const router = express.Router();
@@ -34,7 +33,6 @@ router.post('/', verifyToken,  async (req, res) => {
     }
 
     try {
-        // 1. The Fast Router Step
         const chatCompletion = await groq.chat.completions.create({
             model: MODEL,
             messages: [
@@ -56,7 +54,7 @@ router.post('/', verifyToken,  async (req, res) => {
             return res.status(500).json({ error: 'LLM returned malformed JSON.' });
         }
 
-        // 2. The Agentic Synthesis Step (If action is search)
+        // The Agentic Synthesis Step (If action is search)
         if (aiResponse.action === 'search' && aiResponse.topic) {
             console.log(`\n🤖 AGENT TRIGGERED: Fetching articles for "${aiResponse.topic}"...`);
             
@@ -79,7 +77,6 @@ router.post('/', verifyToken,  async (req, res) => {
                 summary = summaryCompletion.choices[0]?.message?.content || summary;
             }
 
-            // Package the ultimate response!
             return res.json({
                 action: 'search',
                 topic: aiResponse.topic,
@@ -88,7 +85,6 @@ router.post('/', verifyToken,  async (req, res) => {
             });
         }
 
-        // 3. Fallback for 'history' or 'unknown' (Instant return)
         return res.json(aiResponse);
 
     } catch (error: unknown) {

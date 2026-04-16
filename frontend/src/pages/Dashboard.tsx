@@ -1,31 +1,88 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import API from '../services/api';
 
 import SearchBar from '../components/SearchBar';
 import NewsCard from '../components/NewsCard';
 import Loader from '../components/Loader';
+import type { Article, SavedArticle } from '../types/news';
 
 const Dashboard = () => {
     const [query, setQuery] = useState('');
-    const [articles, setArticles] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
+    const [articles, setArticles] = useState<Article[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [saveError, setSaveError] = useState('');
+    const [savedArticleIdsByUrl, setSavedArticleIdsByUrl] = useState<Record<string, string>>({});
+    const [saveLoadingUrl, setSaveLoadingUrl] = useState<string | null>(null);
 
     const lastExecutedQuery = useRef<string | null>(null);
     const location = useLocation();
     const navigate = useNavigate();
 
-    const speakText = (text: string) => {
+    const speakText = useCallback((text: string) => {
         window.speechSynthesis.cancel(); 
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'en-US'; 
         utterance.rate = 1.0; 
         utterance.pitch = 1.0;
         window.speechSynthesis.speak(utterance);
+    }, []);
+
+    const buildSavedMap = (savedArticles: SavedArticle[]) => {
+        return savedArticles.reduce<Record<string, string>>((acc, savedArticle) => {
+            if (savedArticle.url && savedArticle._id) {
+                acc[savedArticle.url] = savedArticle._id;
+            }
+            return acc;
+        }, {});
     };
 
-    const executeIntelligentSearch = async (searchQuery: string, skipHistorySave = false) => {
+    const handleToggleSave = async (article: Article) => {
+        const articleUrl = article.url?.trim();
+        if (!articleUrl || saveLoadingUrl === articleUrl) return;
+
+        setSaveError('');
+        setSaveLoadingUrl(articleUrl);
+
+        try {
+            const existingSavedId = savedArticleIdsByUrl[articleUrl];
+
+            if (existingSavedId) {
+                await API.delete(`/saved-articles/${existingSavedId}`);
+                setSavedArticleIdsByUrl((prev) => {
+                    const next = { ...prev };
+                    delete next[articleUrl];
+                    return next;
+                });
+                return;
+            }
+
+            const response = await API.post('/saved-articles', {
+                title: article.title,
+                description: article.description || '',
+                url: articleUrl,
+                image: article.image || '',
+                publishedAt: article.publishedAt,
+                sourceName: article.source?.name || article.sourceName || ''
+            });
+
+            const savedArticle = response.data as SavedArticle;
+            if (savedArticle?._id && savedArticle.url) {
+                setSavedArticleIdsByUrl((prev) => ({
+                    ...prev,
+                    [savedArticle.url]: savedArticle._id
+                }));
+            }
+        } catch (err) {
+            setSaveError('Failed to update saved articles. Please retry.');
+            console.error(err);
+        } finally {
+            setSaveLoadingUrl(null);
+        }
+    };
+
+    const executeIntelligentSearch = useCallback(async (searchQuery: string, skipHistorySave = false) => {
         if (!searchQuery.trim()) return;
 
         setLoading(true);
@@ -56,12 +113,25 @@ const Dashboard = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [speakText]);
 
-    const handleManualSearch = (e: React.FormEvent) => {
+    const handleManualSearch = (e: FormEvent) => {
         e.preventDefault();
         executeIntelligentSearch(query, false); 
     };
+
+    useEffect(() => {
+        const fetchSavedArticles = async () => {
+            try {
+                const response = await API.get('/saved-articles');
+                setSavedArticleIdsByUrl(buildSavedMap(response.data as SavedArticle[]));
+            } catch (err) {
+                console.error('Failed to load saved article list', err);
+            }
+        };
+
+        fetchSavedArticles();
+    }, []);
 
     useEffect(() => {
         const agentPayload = location.state?.agentPayload;
@@ -105,11 +175,11 @@ const Dashboard = () => {
 
             if (savedQuery && savedArticles) {
                 setQuery(savedQuery);
-                setArticles(JSON.parse(savedArticles));
+                setArticles(JSON.parse(savedArticles) as Article[]);
                 lastExecutedQuery.current = savedQuery;
             }
         }
-    }, [location.state, navigate, location.pathname]);
+    }, [location.state, navigate, location.pathname, executeIntelligentSearch, speakText]);
 
     return (
         <div className="pt-20 px-5 pb-5 max-w-[1200px] mx-auto">
@@ -121,13 +191,20 @@ const Dashboard = () => {
             />
 
             {error && <p className="text-red-500 font-bold mb-5">{error}</p>}
+            {saveError && <p className="text-orange-400 font-bold mb-5">{saveError}</p>}
 
             {loading ? (
                 <Loader />
             ) : (
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-5">
                     {articles.map((article, index) => (
-                        <NewsCard key={index} article={article} />
+                        <NewsCard
+                            key={article.url || index}
+                            article={article}
+                            isSaved={Boolean(savedArticleIdsByUrl[article.url])}
+                            onToggleSave={handleToggleSave}
+                            saveDisabled={saveLoadingUrl === article.url}
+                        />
                     ))}
                 </div>
             )}

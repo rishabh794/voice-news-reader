@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/auth-context';
 
@@ -78,6 +78,12 @@ const Navbar = () => {
                         className="text-xs tracking-wide text-slate-400 hover:text-slate-100 transition-colors duration-200 px-3 py-1.5 rounded-md hover:bg-white/5"
                     >
                         History
+                    </Link>
+                    <Link
+                        to="/saved"
+                        className="text-xs tracking-wide text-slate-400 hover:text-slate-100 transition-colors duration-200 px-3 py-1.5 rounded-md hover:bg-white/5"
+                    >
+                        Saved
                     </Link>
 
                     <div className="ml-auto flex items-center gap-4">

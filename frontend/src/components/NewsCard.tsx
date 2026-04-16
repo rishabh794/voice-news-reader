@@ -1,21 +1,36 @@
-import React from 'react';
-
-interface Article {
-    title: string;
-    description: string;
-    url: string;
-    image?: string;
-}
+import type { Article } from '../types/news';
 
 interface NewsCardProps {
     article: Article;
+    isSaved?: boolean;
+    onToggleSave?: (article: Article) => void;
+    saveDisabled?: boolean;
 }
 
-const NewsCard: React.FC<NewsCardProps> = ({ article }) => {
+const NewsCard = ({ article, isSaved = false, onToggleSave, saveDisabled = false }: NewsCardProps) => {
     return (
         <div className="group relative flex flex-col bg-[#0d0d12]/90 backdrop-blur-md border border-gray-800/80 rounded-xl overflow-hidden hover:border-cyan-500/40 hover:shadow-[0_0_30px_-10px_rgba(6,182,212,0.15)] transition-all duration-300">
             {/* Top border glow effect on hover */}
             <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-cyan-500 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"></div>
+
+            {onToggleSave && (
+                <button
+                    type="button"
+                    onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onToggleSave(article);
+                    }}
+                    disabled={saveDisabled}
+                    className={`absolute top-3 right-3 z-20 px-3 py-1 rounded-full text-[10px] font-mono uppercase tracking-wider border transition-all duration-200 ${
+                        isSaved
+                            ? 'text-cyan-300 border-cyan-400/40 bg-cyan-500/15 hover:bg-cyan-500/20'
+                            : 'text-gray-300 border-gray-600/70 bg-[#0d0d12]/80 hover:border-cyan-500/40 hover:text-cyan-300'
+                    } ${saveDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    {saveDisabled ? 'Saving...' : isSaved ? 'Saved' : 'Save'}
+                </button>
+            )}
 
             {article.image && (
                 <div className="relative">
@@ -37,6 +52,17 @@ const NewsCard: React.FC<NewsCardProps> = ({ article }) => {
                 <p className="text-sm text-gray-400 mb-6 line-clamp-3 leading-relaxed font-sans opacity-80">
                     {article.description}
                 </p>
+
+                {article.source?.name && (
+                    <p className="text-[11px] text-gray-500 font-mono mb-3 uppercase tracking-wide">
+                        Source: {article.source.name}
+                    </p>
+                )}
+                {!article.source?.name && article.sourceName && (
+                    <p className="text-[11px] text-gray-500 font-mono mb-3 uppercase tracking-wide">
+                        Source: {article.sourceName}
+                    </p>
+                )}
                 
                 <a 
                     href={article.url} 

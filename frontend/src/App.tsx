@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
@@ -9,6 +8,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import History from './pages/History';
+import SavedArticles from './pages/SavedArticles';
 
 function App() {
   return (
@@ -36,6 +36,14 @@ function App() {
               <History />
             </ProtectedRoute>
           } 
+        />
+        <Route
+          path="/saved"
+          element={
+            <ProtectedRoute>
+              <SavedArticles />
+            </ProtectedRoute>
+          }
         />
       </Routes>
     </Router>

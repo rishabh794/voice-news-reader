@@ -1,4 +1,4 @@
-import React, { useState, useRef, useContext } from 'react';
+import { useState, useRef, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/auth-context';
 import API from '../services/api';
@@ -44,6 +44,16 @@ const VoiceAssistant = () => {
 
                     if (spokenText.includes('history')) {
                         navigate('/history');
+                        return;
+                    }
+
+                    if (
+                        spokenText.includes('saved article') ||
+                        spokenText.includes('saved articles') ||
+                        spokenText.includes('bookmarks') ||
+                        spokenText.includes('bookmark list')
+                    ) {
+                        navigate('/saved');
                         return;
                     }
 

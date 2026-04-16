@@ -1,4 +1,4 @@
-import React, { useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { AuthContext } from './auth-context';
 import type { User } from './auth-context';
 
