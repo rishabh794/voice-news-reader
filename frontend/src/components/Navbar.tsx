@@ -1,11 +1,13 @@
 import { useContext, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/auth-context';
+import { useToast } from '../hooks/useToast';
 
 const Navbar = () => {
     const authContext = useContext(AuthContext);
     const navigate = useNavigate();
     const [scrolled, setScrolled] = useState(false);
+    const { showToast } = useToast();
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 12);
@@ -16,6 +18,7 @@ const Navbar = () => {
     const handleLogout = () => {
         authContext?.logout();
         navigate('/login');
+        showToast('Logged Out', 'success');
     };
 
     return (
