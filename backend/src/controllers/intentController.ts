@@ -1,0 +1,105 @@
+import type { Response } from 'express';
+import { Groq } from 'groq-sdk';
+import { searchGNews } from '../services/tools.js';
+import { History } from '../models/History.js';
+import type { AuthRequest } from '../middleware/authMiddleware.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+const MODEL = 'llama-3.1-8b-instant';
+
+const SYSTEM_PROMPT = `You are a natural language router for a news application.
+Analyze the user's input and extract their intent.
+Always return a valid JSON object with EXACTLY two keys: "action" and "topic".
+
+Rules for "action":
+- Use "history" if the user wants to see their past searches, old queries, or search history.
+- Use "search" if the user is asking for news, articles, or information about a topic.
+- Use "unknown" if the request is completely unrelated to searching news or viewing history.
+
+Rules for "topic":
+- If action is "search", extract the core subject (e.g., "Elon Musk", "quantum computing"). Ignore conversational filler.
+- If action is "history" or "unknown", set topic to null.
+
+Respond ONLY with pure JSON. Do not include markdown formatting or explanations.`;
+
+export const handleIntent = async (req: AuthRequest, res: Response): Promise<any> => {
+    const { query } = req.body;
+
+    if (!query || typeof query !== 'string' || query.trim() === '') {
+        return res.status(400).json({ error: 'Query is required and must be a non-empty string.' });
+    }
+
+    if (!req.user) {
+        return res.status(401).json({ error: 'User not authenticated.' });
+    }
+
+    try {
+        const chatCompletion = await groq.chat.completions.create({
+            model: MODEL,
+            messages: [
+                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'user', content: query.trim() },
+            ],
+            temperature: 0,
+            max_completion_tokens: 64,
+            response_format: { type: 'json_object' },
+        });
+
+        const content = chatCompletion.choices[0]?.message?.content;
+        if (!content) return res.status(500).json({ error: 'Empty response from LLM.' });
+
+        let aiResponse: { action: string; topic: string | null };
+        try {
+            aiResponse = JSON.parse(content);
+        } catch {
+            return res.status(500).json({ error: 'LLM returned malformed JSON.' });
+        }
+
+        if (aiResponse.action === 'search' && aiResponse.topic) {
+            const topic = aiResponse.topic.trim();
+            console.log(`\nAGENT TRIGGERED: Fetching articles for "${topic}"...`);
+
+            const { rawArticles, llmObservation } = await searchGNews(topic);
+
+            let summary = `Here are the latest articles on ${topic}.`;
+
+            if (rawArticles.length > 0) {
+                const summaryPrompt = `You are an expert news anchor. Based ONLY on the following article headlines and descriptions, write a conversational, 2-sentence summary of the current events. Do not use external knowledge.\n\n${llmObservation}`;
+
+                const summaryCompletion = await groq.chat.completions.create({
+                    model: MODEL,
+                    messages: [{ role: 'user', content: summaryPrompt }],
+                    temperature: 0.3,
+                    max_completion_tokens: 150,
+                });
+
+                summary = summaryCompletion.choices[0]?.message?.content || summary;
+            }
+
+            const historyRecord = new History({
+                userId: req.user.id,
+                query: topic,
+                summary,
+                articles: rawArticles,
+            });
+            await historyRecord.save();
+
+            return res.json({
+                action: 'search',
+                topic,
+                summary,
+                articles: rawArticles
+            });
+        }
+
+        return res.json(aiResponse);
+    } catch (error: unknown) {
+        console.error('Groq API error:', error);
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return res.status(502).json({ error: 'Failed to reach LLM.', detail: message });
+    }
+};

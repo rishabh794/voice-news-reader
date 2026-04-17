@@ -7,8 +7,24 @@ import NewsCard from '../components/NewsCard';
 import Loader from '../components/Loader';
 import type { Article, SavedArticle } from '../types/news';
 
+interface SearchIntentPayload {
+    action: 'search';
+    topic: string;
+    summary: string;
+    articles: Article[];
+}
+
+interface DashboardLocationState {
+    agentPayload?: SearchIntentPayload;
+    query?: string;
+}
+
 const Dashboard = () => {
     const [query, setQuery] = useState('');
+    const [summary, setSummary] = useState('');
+    const [showSummary, setShowSummary] = useState(false);
+    const [isSummaryAudioPlaying, setIsSummaryAudioPlaying] = useState(false);
+    const [isSummaryAudioPaused, setIsSummaryAudioPaused] = useState(false);
     const [articles, setArticles] = useState<Article[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -16,18 +32,44 @@ const Dashboard = () => {
     const [savedArticleIdsByUrl, setSavedArticleIdsByUrl] = useState<Record<string, string>>({});
     const [saveLoadingUrl, setSaveLoadingUrl] = useState<string | null>(null);
 
-    const lastExecutedQuery = useRef<string | null>(null);
+    const lastHandledPayload = useRef<string | null>(null);
     const location = useLocation();
     const navigate = useNavigate();
 
-    const speakText = useCallback((text: string) => {
-        window.speechSynthesis.cancel(); 
+    const playSummaryAudio = useCallback((text: string) => {
+        window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-US'; 
-        utterance.rate = 1.0; 
+        utterance.lang = 'en-US';
+        utterance.rate = 1.0;
         utterance.pitch = 1.0;
+
+        utterance.onend = () => {
+            setIsSummaryAudioPlaying(false);
+            setIsSummaryAudioPaused(false);
+        };
+
+        utterance.onerror = () => {
+            setIsSummaryAudioPlaying(false);
+            setIsSummaryAudioPaused(false);
+        };
+
+        setIsSummaryAudioPlaying(true);
+        setIsSummaryAudioPaused(false);
         window.speechSynthesis.speak(utterance);
     }, []);
+
+    const toggleSummaryAudioPause = useCallback(() => {
+        if (!isSummaryAudioPlaying) return;
+
+        if (isSummaryAudioPaused) {
+            window.speechSynthesis.resume();
+            setIsSummaryAudioPaused(false);
+            return;
+        }
+
+        window.speechSynthesis.pause();
+        setIsSummaryAudioPaused(true);
+    }, [isSummaryAudioPlaying, isSummaryAudioPaused]);
 
     const buildSavedMap = (savedArticles: SavedArticle[]) => {
         return savedArticles.reduce<Record<string, string>>((acc, savedArticle) => {
@@ -82,30 +124,35 @@ const Dashboard = () => {
         }
     };
 
-    const executeIntelligentSearch = useCallback(async (searchQuery: string, skipHistorySave = false) => {
-        if (!searchQuery.trim()) return;
+    const executeIntelligentSearch = useCallback(async (searchQuery: string) => {
+        const trimmedQuery = searchQuery.trim();
+        if (!trimmedQuery) return;
 
         setLoading(true);
         setError('');
 
         try {
-            const response = await API.post('/intent', { query: searchQuery });
+            const response = await API.post('/intent', { query: trimmedQuery });
             const data = response.data;
 
-            if (data.action === 'search' && data.articles) {
-                setArticles(data.articles);
-                setQuery(data.topic);
-                
-                sessionStorage.setItem('dashboard_query', data.topic);
-                sessionStorage.setItem('dashboard_articles', JSON.stringify(data.articles));
-                
-                speakText(data.summary); 
+            if (data.action === 'search' && Array.isArray(data.articles)) {
+                const topic = typeof data.topic === 'string' && data.topic.trim()
+                    ? data.topic.trim()
+                    : trimmedQuery;
+                const generatedSummary = typeof data.summary === 'string' ? data.summary : '';
 
-                if (!skipHistorySave) {
-                    API.post('/history', { query: data.topic }).catch(err => console.error("History save failed", err));
-                }
+                setArticles(data.articles as Article[]);
+                setQuery(topic);
+                setSummary(generatedSummary);
+                setShowSummary(Boolean(generatedSummary));
+
+                sessionStorage.setItem('dashboard_query', topic);
+                sessionStorage.setItem('dashboard_articles', JSON.stringify(data.articles));
+                sessionStorage.setItem('dashboard_summary', generatedSummary);
+
+                if (generatedSummary) playSummaryAudio(generatedSummary);
             } else {
-                 setError('No articles found for that topic.');
+                setError('No articles found for that topic.');
             }
         } catch (err) {
             setError('Failed to fetch news. Check the console.');
@@ -113,11 +160,11 @@ const Dashboard = () => {
         } finally {
             setLoading(false);
         }
-    }, [speakText]);
+    }, [playSummaryAudio]);
 
     const handleManualSearch = (e: FormEvent) => {
         e.preventDefault();
-        executeIntelligentSearch(query, false); 
+        executeIntelligentSearch(query);
     };
 
     useEffect(() => {
@@ -134,61 +181,100 @@ const Dashboard = () => {
     }, []);
 
     useEffect(() => {
-        const agentPayload = location.state?.agentPayload;
-        const historyQuery = location.state?.query; 
-        const fromHistory = location.state?.fromHistory || false;
+        const state = (location.state as DashboardLocationState | null) || null;
+        const agentPayload = state?.agentPayload;
+        const historyQuery = state?.query;
 
-        // SCENARIO 1: Came from Voice Command (Pre-fetched data)
-        if (agentPayload) {
-            if (lastExecutedQuery.current !== agentPayload.topic) {
-                lastExecutedQuery.current = agentPayload.topic;
-                
-                setQuery(agentPayload.topic);
-                setArticles(agentPayload.articles || []);
-                
-                sessionStorage.setItem('dashboard_query', agentPayload.topic);
-                sessionStorage.setItem('dashboard_articles', JSON.stringify(agentPayload.articles || []));
+        // SCENARIO 1: Came from Voice Command / History Refresh (Pre-fetched data)
+        if (agentPayload?.topic) {
+            const payloadSummary = agentPayload.summary || '';
+            const payloadArticles = Array.isArray(agentPayload.articles) ? agentPayload.articles : [];
+            const payloadSignature = `${agentPayload.topic}::${payloadSummary}::${payloadArticles.map((article) => article.url).join('|')}`;
 
-                if (agentPayload.summary) speakText(agentPayload.summary);
+            if (lastHandledPayload.current === payloadSignature) return;
+            lastHandledPayload.current = payloadSignature;
 
-                API.post('/history', { query: agentPayload.topic }).catch(console.error);
+            setQuery(agentPayload.topic);
+            setSummary(payloadSummary);
+            setShowSummary(Boolean(payloadSummary));
+            setArticles(payloadArticles);
 
-                navigate(location.pathname, { replace: true, state: {} });
-            }
-        } 
-        // SCENARIO 2: Came from History Page click (Needs to fetch)
+            sessionStorage.setItem('dashboard_query', agentPayload.topic);
+            sessionStorage.setItem('dashboard_articles', JSON.stringify(payloadArticles));
+            sessionStorage.setItem('dashboard_summary', payloadSummary);
+
+            if (payloadSummary) playSummaryAudio(payloadSummary);
+
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+        // SCENARIO 2: Backward-compatible fallback (history sends only query)
         else if (historyQuery) {
-            if (lastExecutedQuery.current !== historyQuery) {
-                lastExecutedQuery.current = historyQuery;
-                setQuery(historyQuery);
-                
-                // Fetch the news, but tell it to SKIP saving to history
-                executeIntelligentSearch(historyQuery, fromHistory);
-                
-                navigate(location.pathname, { replace: true, state: {} });
-            }
-        } 
+            const historySignature = `history:${historyQuery}`;
+            if (lastHandledPayload.current === historySignature) return;
+            lastHandledPayload.current = historySignature;
+
+            setQuery(historyQuery);
+            executeIntelligentSearch(historyQuery);
+            navigate(location.pathname, { replace: true, state: {} });
+        }
         // SCENARIO 3: Normal Page Load (Restore from Session)
-        else if (!lastExecutedQuery.current) {
+        else if (!lastHandledPayload.current) {
             const savedQuery = sessionStorage.getItem('dashboard_query');
             const savedArticles = sessionStorage.getItem('dashboard_articles');
+            const savedSummary = sessionStorage.getItem('dashboard_summary') || '';
 
             if (savedQuery && savedArticles) {
-                setQuery(savedQuery);
-                setArticles(JSON.parse(savedArticles) as Article[]);
-                lastExecutedQuery.current = savedQuery;
+                try {
+                    setQuery(savedQuery);
+                    setArticles(JSON.parse(savedArticles) as Article[]);
+                    setSummary(savedSummary);
+                    setShowSummary(Boolean(savedSummary));
+                    lastHandledPayload.current = `cache:${savedQuery}`;
+                } catch (parseError) {
+                    console.error('Failed to parse dashboard cache', parseError);
+                }
             }
         }
-    }, [location.state, navigate, location.pathname, executeIntelligentSearch, speakText]);
+    }, [location.state, navigate, location.pathname, executeIntelligentSearch, playSummaryAudio]);
+
+    useEffect(() => {
+        return () => {
+            window.speechSynthesis.cancel();
+        };
+    }, []);
 
     return (
         <div className="pt-20 px-5 pb-5 max-w-[1200px] mx-auto">
-            <SearchBar 
-                query={query} 
-                setQuery={setQuery} 
-                onSearch={handleManualSearch} 
-                loading={loading} 
+            <SearchBar
+                query={query}
+                setQuery={setQuery}
+                onSearch={handleManualSearch}
+                loading={loading}
+                hasSummary={Boolean(summary)}
+                onSummaryClick={() => setShowSummary((prev) => !prev)}
             />
+
+            {summary && showSummary && (
+                <div className="max-w-2xl mx-auto mb-6 rounded-xl border border-indigo-500/30 bg-[#0d0d12]/90 p-4">
+                    <p className="text-[11px] font-mono uppercase tracking-wider text-indigo-400 mb-2">Latest Summary</p>
+                    <p className="text-sm text-gray-200 leading-relaxed">{summary}</p>
+                    <button
+                        type="button"
+                        onClick={() => playSummaryAudio(summary)}
+                        className="mt-4 px-3 py-2 bg-[#13131a] border border-indigo-500/30 rounded-lg text-indigo-300 font-mono text-[11px] uppercase tracking-wider hover:text-white hover:border-indigo-400/50 transition-all duration-200"
+                    >
+                        Play Audio
+                    </button>
+                    <button
+                        type="button"
+                        onClick={toggleSummaryAudioPause}
+                        disabled={!isSummaryAudioPlaying}
+                        className="mt-2 ml-2 px-3 py-2 bg-[#13131a] border border-amber-500/30 rounded-lg text-amber-300 font-mono text-[11px] uppercase tracking-wider hover:text-white hover:border-amber-400/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isSummaryAudioPlaying ? (isSummaryAudioPaused ? 'Resume Audio' : 'Pause Audio') : 'Pause Audio'}
+                    </button>
+                </div>
+            )}
 
             {error && <p className="text-red-500 font-bold mb-5">{error}</p>}
             {saveError && <p className="text-orange-400 font-bold mb-5">{saveError}</p>}

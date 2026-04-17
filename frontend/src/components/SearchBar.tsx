@@ -5,9 +5,18 @@ interface SearchBarProps {
     setQuery: (query: string) => void;
     onSearch: (e: React.FormEvent) => void;
     loading: boolean;
+    hasSummary?: boolean;
+    onSummaryClick?: () => void;
 }
 
-const SearchBar: React.FC<SearchBarProps> = ({ query, setQuery, onSearch, loading }) => {
+const SearchBar: React.FC<SearchBarProps> = ({
+    query,
+    setQuery,
+    onSearch,
+    loading,
+    hasSummary = false,
+    onSummaryClick
+}) => {
     return (
         <form 
             onSubmit={onSearch} 
@@ -50,6 +59,16 @@ const SearchBar: React.FC<SearchBarProps> = ({ query, setQuery, onSearch, loadin
                     )}
                 </span>
             </button>
+
+            {hasSummary && onSummaryClick && (
+                <button
+                    type="button"
+                    onClick={onSummaryClick}
+                    className="ml-2 px-4 py-3 bg-[#13131a] border border-indigo-500/30 rounded-xl text-indigo-300 font-mono text-xs font-bold uppercase tracking-widest hover:text-white hover:border-indigo-400/50 transition-all duration-300"
+                >
+                    Summary
+                </button>
+            )}
         </form>
     );
 };

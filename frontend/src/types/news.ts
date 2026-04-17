@@ -24,3 +24,14 @@ export interface SavedArticle {
     sourceName: string;
     savedAt: string;
 }
+
+export interface HistoryEntry {
+    _id: string;
+    userId: string;
+    query: string;
+    summary: string;
+    articles: Article[];
+    timestamp?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
