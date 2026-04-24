@@ -1,9 +1,29 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../services/api';
-import type { HistoryEntry } from '../types/news';
+import { useToast } from '../hooks/useToast';
+import { AI_HISTORY_CATEGORIES, type HistoryCategory, type HistoryEntry } from '../types/news';
 
 const REFRESH_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const CATEGORY_FILTERS: Array<'All' | HistoryCategory> = ['All', ...AI_HISTORY_CATEGORIES, 'Uncategorized'];
+const VALID_HISTORY_CATEGORIES = new Set<HistoryCategory>([...AI_HISTORY_CATEGORIES, 'Uncategorized']);
+
+const getEntryTimeValue = (entry: HistoryEntry): number => {
+    const dateValue = entry.createdAt || entry.timestamp;
+    if (!dateValue) return 0;
+
+    const parsed = new Date(dateValue).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const sortHistoryEntries = (entries: HistoryEntry[]): HistoryEntry[] => {
+    return [...entries].sort((a, b) => getEntryTimeValue(b) - getEntryTimeValue(a));
+};
+
+const normalizeHistoryCategory = (category: HistoryEntry['category']): HistoryCategory => {
+    if (!category) return 'Uncategorized';
+    return VALID_HISTORY_CATEGORIES.has(category) ? category : 'Uncategorized';
+};
 
 const History = () => {
     const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -13,7 +33,11 @@ const History = () => {
     const [refreshingId, setRefreshingId] = useState<string | null>(null);
     const [activeAudioEntryId, setActiveAudioEntryId] = useState<string | null>(null);
     const [isAudioPaused, setIsAudioPaused] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [activeCategory, setActiveCategory] = useState<'All' | HistoryCategory>('All');
+    const [deletingIds, setDeletingIds] = useState<Record<string, boolean>>({});
     const navigate = useNavigate();
+    const { showToast } = useToast();
 
     const getEntryDate = useCallback((entry: HistoryEntry): Date | null => {
         const dateValue = entry.createdAt || entry.timestamp;
@@ -87,7 +111,8 @@ const History = () => {
         const fetchHistory = async () => {
             try {
                 const response = await API.get('/history');
-                setHistory(response.data as HistoryEntry[]);
+                const entries = response.data as HistoryEntry[];
+                setHistory(sortHistoryEntries(entries));
             } catch (err) {
                 setError('Failed to load history.');
                 console.error(err);
@@ -99,11 +124,35 @@ const History = () => {
         fetchHistory();
     }, []);
 
-    useEffect(() => { //a cleanup handler that runs when the component unmounts (when navigating a page , the audio stops)
+    useEffect(() => {
         return () => {
             window.speechSynthesis.cancel();
         };
     }, []);
+
+    const filteredHistory = useMemo(() => {
+        const normalizedSearch = searchTerm.trim().toLowerCase();
+
+        return history.filter((entry) => {
+            const entryCategory = normalizeHistoryCategory(entry.category);
+            if (activeCategory !== 'All' && entryCategory !== activeCategory) {
+                return false;
+            }
+
+            if (!normalizedSearch) {
+                return true;
+            }
+
+            const articleText = Array.isArray(entry.articles)
+                ? entry.articles.map((article) => (
+                    `${article.title || ''} ${article.source?.name || article.sourceName || ''}`
+                )).join(' ')
+                : '';
+
+            const searchableText = `${entry.query} ${entry.summary} ${entryCategory} ${articleText}`.toLowerCase();
+            return searchableText.includes(normalizedSearch);
+        });
+    }, [activeCategory, history, searchTerm]);
 
     const toggleSources = (entryId: string) => {
         setExpandedSourcesById((prev) => ({
@@ -137,6 +186,51 @@ const History = () => {
         }
     };
 
+    const handleDelete = async (entryId: string) => {
+        if (deletingIds[entryId]) return;
+
+        const removedEntry = history.find((entry) => entry._id === entryId);
+        if (!removedEntry) return;
+
+        setError('');
+        setHistory((prev) => prev.filter((entry) => entry._id !== entryId));
+        setExpandedSourcesById((prev) => {
+            if (!(entryId in prev)) return prev;
+            const next = { ...prev };
+            delete next[entryId];
+            return next;
+        });
+
+        if (activeAudioEntryId === entryId) {
+            window.speechSynthesis.cancel();
+            setActiveAudioEntryId(null);
+            setIsAudioPaused(false);
+        }
+
+        setDeletingIds((prev) => ({
+            ...prev,
+            [entryId]: true
+        }));
+
+        try {
+            await API.delete(`/history/${entryId}`);
+            showToast('History entry deleted.', 'success');
+        } catch (err) {
+            setHistory((prev) => {
+                if (prev.some((entry) => entry._id === removedEntry._id)) return prev;
+                return sortHistoryEntries([...prev, removedEntry]);
+            });
+            setError('Failed to delete history entry. Please retry.');
+            console.error(err);
+        } finally {
+            setDeletingIds((prev) => {
+                const next = { ...prev };
+                delete next[entryId];
+                return next;
+            });
+        }
+    };
+
     const formatTimestamp = (entry: HistoryEntry) => {
         const parsed = getEntryDate(entry);
         if (!parsed) return 'Unknown time';
@@ -159,6 +253,38 @@ const History = () => {
                 </h2>
             </div>
 
+            {!loading && history.length > 0 && (
+                <div className="mb-6 space-y-3">
+                    <input
+                        type="search"
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                        placeholder="Search topics, summaries, or sources..."
+                        className="w-full px-4 py-3 bg-[#11111a] border border-gray-700/80 rounded-lg text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/60"
+                    />
+
+                    <div className="flex flex-wrap gap-2">
+                        {CATEGORY_FILTERS.map((category) => {
+                            const isActive = activeCategory === category;
+                            return (
+                                <button
+                                    key={category}
+                                    type="button"
+                                    onClick={() => setActiveCategory(category)}
+                                    className={`px-3 py-1.5 rounded-full border text-[11px] font-mono uppercase tracking-wider transition-all duration-200 ${
+                                        isActive
+                                            ? 'bg-cyan-600/20 border-cyan-400/70 text-cyan-200'
+                                            : 'bg-[#13131a] border-gray-700/80 text-gray-400 hover:text-gray-200 hover:border-gray-500'
+                                    }`}
+                                >
+                                    {category}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
             {loading && (
                 <div className="flex items-center gap-3 p-4 bg-[#13131a] border border-gray-800/50 rounded-lg">
                     <span className="w-2 h-2 rounded-full bg-cyan-600 animate-pulse"></span>
@@ -179,23 +305,36 @@ const History = () => {
                 </div>
             )}
 
-            {!loading && history.length > 0 && (
+            {!loading && history.length > 0 && filteredHistory.length === 0 && (
+                <div className="p-8 text-center bg-[#13131a] border border-gray-800/50 rounded-lg">
+                    <p className="text-gray-400 font-mono text-sm">No briefings match your current search or category filter.</p>
+                </div>
+            )}
+
+            {!loading && filteredHistory.length > 0 && (
                 <div className="space-y-4">
-                    {history.map((entry) => {
+                    {filteredHistory.map((entry) => {
                         const sourceCount = Array.isArray(entry.articles) ? entry.articles.length : 0;
                         const isExpanded = Boolean(expandedSourcesById[entry._id]);
                         const canSpeak = typeof entry.summary === 'string' && entry.summary.trim().length > 0;
                         const isEntryRefreshing = refreshingId === entry._id;
                         const refreshLocked = isRefreshLocked(entry);
                         const isEntrySpeaking = activeAudioEntryId === entry._id;
+                        const isDeleting = Boolean(deletingIds[entry._id]);
+                        const entryCategory = normalizeHistoryCategory(entry.category);
 
                         return (
                             <article key={entry._id} className="border border-gray-800/80 rounded-xl bg-[#101019] overflow-hidden">
                                 <div className="p-4 border-b border-gray-800/60">
                                     <div className="flex flex-wrap items-center justify-between gap-3">
-                                        <h3 className="text-sm md:text-base font-mono text-cyan-300 tracking-wide">
-                                            {entry.query}
-                                        </h3>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h3 className="text-sm md:text-base font-mono text-cyan-300 tracking-wide">
+                                                {entry.query}
+                                            </h3>
+                                            <span className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider border border-cyan-500/40 text-cyan-200 bg-cyan-500/10 rounded-full">
+                                                {entryCategory}
+                                            </span>
+                                        </div>
                                         <span className="text-xs font-mono text-gray-500">
                                             {formatTimestamp(entry)}
                                         </span>
@@ -235,10 +374,29 @@ const History = () => {
                                     <button
                                         type="button"
                                         onClick={() => handleRefresh(entry)}
-                                        disabled={isEntryRefreshing || refreshLocked}
+                                        disabled={isEntryRefreshing || refreshLocked || isDeleting}
                                         className="px-3 py-2 bg-[#13131a] border border-emerald-500/30 rounded-lg text-emerald-300 font-mono text-[11px] uppercase tracking-wider hover:text-white hover:border-emerald-400/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {isEntryRefreshing ? 'Refreshing...' : refreshLocked ? getCooldownLabel(entry) : 'Get Latest News'}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => handleDelete(entry._id)}
+                                        disabled={isDeleting}
+                                        className="inline-flex items-center gap-1 px-3 py-2 bg-[#13131a] border border-red-500/30 rounded-lg text-red-300 font-mono text-[11px] uppercase tracking-wider hover:text-white hover:border-red-400/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="1.7"
+                                            className="w-3.5 h-3.5"
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                                        </svg>
+                                        {isDeleting ? 'Deleting...' : 'Delete'}
                                     </button>
                                 </div>
 
@@ -266,7 +424,7 @@ const History = () => {
                                                                     {article.title || 'Untitled Source'}
                                                                 </a>
                                                                 <p className="mt-1 text-[11px] font-mono text-gray-500 uppercase tracking-wider">
-                                                                    {(article.source?.name || article.sourceName || 'Unknown Source')}
+                                                                    {article.source?.name || article.sourceName || 'Unknown Source'}
                                                                 </p>
                                                             </li>
                                                         ))}

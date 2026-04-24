@@ -2,6 +2,20 @@ export interface NewsSource {
     name?: string;
 }
 
+export const AI_HISTORY_CATEGORIES = [
+    'Technology',
+    'Politics',
+    'Business',
+    'Sports',
+    'Entertainment',
+    'Health',
+    'World',
+    'Science'
+] as const;
+
+export type AiHistoryCategory = (typeof AI_HISTORY_CATEGORIES)[number];
+export type HistoryCategory = AiHistoryCategory | 'Uncategorized';
+
 export interface Article {
     _id?: string;
     title: string;
@@ -30,6 +44,7 @@ export interface HistoryEntry {
     userId: string;
     query: string;
     summary: string;
+    category?: HistoryCategory;
     articles: Article[];
     timestamp?: string;
     createdAt?: string;
