@@ -3,6 +3,7 @@ import { Groq } from 'groq-sdk';
 import { searchGNews } from '../services/tools.js';
 import { History } from '../models/History.js';
 import type { AuthRequest } from '../middleware/authMiddleware.js';
+import { AI_NEWS_CATEGORIES, isAiNewsCategory, type AiNewsCategory } from '../utils/historyCategories.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -25,6 +26,93 @@ Rules for "topic":
 - If action is "history" or "unknown", set topic to null.
 
 Respond ONLY with pure JSON. Do not include markdown formatting or explanations.`;
+
+const CATEGORY_SYSTEM_PROMPT = `You classify a news briefing into one dominant category.
+Return ONLY a valid JSON object with EXACTLY one key: "category".
+
+Allowed categories:
+- Technology
+- Politics
+- Business
+- Sports
+- Entertainment
+- Health
+- World
+- Science
+
+Rules:
+- Choose exactly one category from the allowed list.
+- If the topic spans multiple categories, choose the most dominant one based on user intent and source emphasis.
+- Never invent new categories and never return multiple categories.
+- If evidence is weak, choose the closest allowed category.`;
+
+const CATEGORY_KEYWORDS: Record<AiNewsCategory, string[]> = {
+    Technology: ['ai', 'artificial intelligence', 'chip', 'software', 'app', 'startup', 'robot', 'cyber', 'cloud', 'tech'],
+    Politics: ['election', 'parliament', 'senate', 'president', 'minister', 'government', 'policy', 'diplomat', 'congress'],
+    Business: ['market', 'stocks', 'economy', 'company', 'revenue', 'profit', 'earnings', 'trade', 'finance', 'merger'],
+    Sports: ['match', 'league', 'tournament', 'goal', 'cricket', 'football', 'basketball', 'tennis', 'olympics'],
+    Entertainment: ['movie', 'music', 'celebrity', 'streaming', 'film', 'tv', 'show', 'box office', 'festival'],
+    Health: ['health', 'hospital', 'vaccine', 'medical', 'disease', 'wellness', 'drug', 'cdc', 'who'],
+    World: ['global', 'international', 'geopolitical', 'war', 'conflict', 'summit', 'country', 'nation'],
+    Science: ['research', 'scientist', 'space', 'nasa', 'experiment', 'physics', 'biology', 'climate', 'discovery']
+};
+
+const inferCategoryFromKeywords = (topic: string, summary: string, llmObservation: string): AiNewsCategory => {
+    const searchableText = `${topic} ${summary} ${llmObservation}`.toLowerCase();
+
+    let bestCategory: AiNewsCategory = 'World';
+    let highestScore = 0;
+
+    for (const category of AI_NEWS_CATEGORIES) {
+        const keywords = CATEGORY_KEYWORDS[category];
+        const score = keywords.reduce((count, keyword) => (
+            searchableText.includes(keyword) ? count + 1 : count
+        ), 0);
+
+        if (score > highestScore) {
+            highestScore = score;
+            bestCategory = category;
+        }
+    }
+
+    return bestCategory;
+};
+
+const classifyNewsCategory = async (topic: string, summary: string, llmObservation: string): Promise<AiNewsCategory> => {
+    const fallbackCategory = inferCategoryFromKeywords(topic, summary, llmObservation);
+
+    try {
+        const categoryPrompt = `Topic: ${topic}
+Summary: ${summary}
+Source digest: ${llmObservation.slice(0, 3500)}`;
+
+        const completion = await groq.chat.completions.create({
+            model: MODEL,
+            messages: [
+                { role: 'system', content: CATEGORY_SYSTEM_PROMPT },
+                { role: 'user', content: categoryPrompt }
+            ],
+            temperature: 0,
+            max_completion_tokens: 32,
+            response_format: { type: 'json_object' }
+        });
+
+        const content = completion.choices[0]?.message?.content;
+        if (!content) return fallbackCategory;
+
+        let parsed: { category?: unknown };
+        try {
+            parsed = JSON.parse(content) as { category?: unknown };
+        } catch {
+            return fallbackCategory;
+        }
+
+        return isAiNewsCategory(parsed.category) ? parsed.category : fallbackCategory;
+    } catch (error) {
+        console.error('Category classification error:', error);
+        return fallbackCategory;
+    }
+};
 
 export const handleIntent = async (req: AuthRequest, res: Response): Promise<any> => {
     const { query } = req.body;
@@ -80,10 +168,13 @@ export const handleIntent = async (req: AuthRequest, res: Response): Promise<any
                 summary = summaryCompletion.choices[0]?.message?.content || summary;
             }
 
+            const category = await classifyNewsCategory(topic, summary, llmObservation);
+
             const historyRecord = new History({
                 userId: req.user.id,
                 query: topic,
                 summary,
+                category,
                 articles: rawArticles,
             });
             await historyRecord.save();
@@ -92,6 +183,7 @@ export const handleIntent = async (req: AuthRequest, res: Response): Promise<any
                 action: 'search',
                 topic,
                 summary,
+                category,
                 articles: rawArticles
             });
         }
