@@ -15,6 +15,7 @@ import { AI_HISTORY_CATEGORIES, type HistoryCategory, type HistoryEntry } from '
 const REFRESH_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const CATEGORY_FILTERS: Array<'All' | HistoryCategory> = ['All', ...AI_HISTORY_CATEGORIES, 'Uncategorized'];
 const VALID_HISTORY_CATEGORIES = new Set<HistoryCategory>([...AI_HISTORY_CATEGORIES, 'Uncategorized']);
+const NO_ARTICLES_MESSAGE = 'No articles found related to this topic';
 
 const getEntryTimeValue = (entry: HistoryEntry): number => {
     const dateValue = entry.createdAt || entry.timestamp;
@@ -181,6 +182,14 @@ const History = () => {
             const payload = response.data;
 
             if (payload.action === 'search' && payload.topic) {
+                const payloadArticles = Array.isArray(payload.articles) ? payload.articles : [];
+                if (payloadArticles.length === 0) {
+                    const noArticlesMessage = typeof payload.message === 'string' && payload.message.trim()
+                        ? payload.message.trim()
+                        : NO_ARTICLES_MESSAGE;
+                    setError(noArticlesMessage);
+                    return;
+                }
                 navigate('/dashboard', { state: { agentPayload: payload } });
                 return;
             }

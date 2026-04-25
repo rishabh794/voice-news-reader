@@ -153,20 +153,27 @@ export const handleIntent = async (req: AuthRequest, res: Response): Promise<any
 
             const { rawArticles, llmObservation } = await searchGNews(topic);
 
-            let summary = `Here are the latest articles on ${topic}.`;
-
-            if (rawArticles.length > 0) {
-                const summaryPrompt = `You are an expert news anchor. Based ONLY on the following article headlines and descriptions, write a conversational, 2-sentence summary of the current events. Do not use external knowledge.\n\n${llmObservation}`;
-
-                const summaryCompletion = await groq.chat.completions.create({
-                    model: MODEL,
-                    messages: [{ role: 'user', content: summaryPrompt }],
-                    temperature: 0.3,
-                    max_completion_tokens: 150,
+            if (rawArticles.length === 0) {
+                return res.json({
+                    action: 'search',
+                    topic,
+                    message: 'No articles found related to this topic',
+                    summary: '',
+                    articles: []
                 });
-
-                summary = summaryCompletion.choices[0]?.message?.content || summary;
             }
+
+            let summary = `Here are the latest articles on ${topic}.`;
+            const summaryPrompt = `You are an expert news anchor. Based ONLY on the following article headlines and descriptions, write a conversational, 2-sentence summary of the current events. Do not use external knowledge.\n\n${llmObservation}`;
+
+            const summaryCompletion = await groq.chat.completions.create({
+                model: MODEL,
+                messages: [{ role: 'user', content: summaryPrompt }],
+                temperature: 0.3,
+                max_completion_tokens: 150,
+            });
+
+            summary = summaryCompletion.choices[0]?.message?.content || summary;
 
             const category = await classifyNewsCategory(topic, summary, llmObservation);
 

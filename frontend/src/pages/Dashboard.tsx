@@ -12,12 +12,15 @@ interface SearchIntentPayload {
     topic: string;
     summary: string;
     articles: Article[];
+    message?: string;
 }
 
 interface DashboardLocationState {
     agentPayload?: SearchIntentPayload;
     query?: string;
 }
+
+const NO_ARTICLES_MESSAGE = 'No articles found related to this topic';
 
 const Dashboard = () => {
     const [query, setQuery] = useState('');
@@ -55,6 +58,19 @@ const Dashboard = () => {
 
         setIsSummaryAudioPlaying(true);
         setIsSummaryAudioPaused(false);
+        window.speechSynthesis.speak(utterance);
+    }, []);
+
+    const speakNoArticlesMessage = useCallback((message: string) => {
+        window.speechSynthesis.cancel();
+        setIsSummaryAudioPlaying(false);
+        setIsSummaryAudioPaused(false);
+
+        const utterance = new SpeechSynthesisUtterance(message);
+        utterance.lang = 'en-US';
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+
         window.speechSynthesis.speak(utterance);
     }, []);
 
@@ -140,6 +156,22 @@ const Dashboard = () => {
                     ? data.topic.trim()
                     : trimmedQuery;
                 const generatedSummary = typeof data.summary === 'string' ? data.summary : '';
+                const noArticlesMessage = typeof data.message === 'string' && data.message.trim()
+                    ? data.message.trim()
+                    : NO_ARTICLES_MESSAGE;
+
+                if (data.articles.length === 0) {
+                    speakNoArticlesMessage(noArticlesMessage);
+                    setArticles([]);
+                    setQuery(topic);
+                    setSummary('');
+                    setShowSummary(false);
+                    setError(noArticlesMessage);
+                    sessionStorage.setItem('dashboard_query', topic);
+                    sessionStorage.setItem('dashboard_articles', JSON.stringify([]));
+                    sessionStorage.setItem('dashboard_summary', '');
+                    return;
+                }
 
                 setArticles(data.articles as Article[]);
                 setQuery(topic);
@@ -152,7 +184,8 @@ const Dashboard = () => {
 
                 if (generatedSummary) playSummaryAudio(generatedSummary);
             } else {
-                setError('No articles found for that topic.');
+                speakNoArticlesMessage(NO_ARTICLES_MESSAGE);
+                setError(NO_ARTICLES_MESSAGE);
             }
         } catch (err) {
             setError('Failed to fetch news. Check the console.');
@@ -160,7 +193,7 @@ const Dashboard = () => {
         } finally {
             setLoading(false);
         }
-    }, [playSummaryAudio]);
+    }, [playSummaryAudio, speakNoArticlesMessage]);
 
     const handleManualSearch = (e: FormEvent) => {
         e.preventDefault();
@@ -189,11 +222,31 @@ const Dashboard = () => {
         if (agentPayload?.topic) {
             const payloadSummary = agentPayload.summary || '';
             const payloadArticles = Array.isArray(agentPayload.articles) ? agentPayload.articles : [];
+            const payloadMessage = typeof agentPayload.message === 'string' && agentPayload.message.trim()
+                ? agentPayload.message.trim()
+                : NO_ARTICLES_MESSAGE;
             const payloadSignature = `${agentPayload.topic}::${payloadSummary}::${payloadArticles.map((article) => article.url).join('|')}`;
 
             if (lastHandledPayload.current === payloadSignature) return;
             lastHandledPayload.current = payloadSignature;
 
+            if (payloadArticles.length === 0) {
+                speakNoArticlesMessage(payloadMessage);
+                setQuery(agentPayload.topic);
+                setSummary('');
+                setShowSummary(false);
+                setArticles([]);
+                setError(payloadMessage);
+
+                sessionStorage.setItem('dashboard_query', agentPayload.topic);
+                sessionStorage.setItem('dashboard_articles', JSON.stringify([]));
+                sessionStorage.setItem('dashboard_summary', '');
+
+                navigate(location.pathname, { replace: true, state: {} });
+                return;
+            }
+
+            setError('');
             setQuery(agentPayload.topic);
             setSummary(payloadSummary);
             setShowSummary(Boolean(payloadSummary));
@@ -235,7 +288,7 @@ const Dashboard = () => {
                 }
             }
         }
-    }, [location.state, navigate, location.pathname, executeIntelligentSearch, playSummaryAudio]);
+    }, [location.state, navigate, location.pathname, executeIntelligentSearch, playSummaryAudio, speakNoArticlesMessage]);
 
     useEffect(() => {
         return () => {
@@ -276,7 +329,7 @@ const Dashboard = () => {
                 </div>
             )}
 
-            {error && <p className="text-red-500 font-bold mb-5">{error}</p>}
+            {error && <p className="text-red-500 font-bold mb-5 text-center">{error}</p>}
             {saveError && <p className="text-orange-400 font-bold mb-5">{saveError}</p>}
 
             {loading ? (
