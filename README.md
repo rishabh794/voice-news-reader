@@ -36,6 +36,7 @@ Voice News Reader provides a hands-free way to discover news:
 - Voice-first interaction model with push-to-talk recording.
 - AI intent routing with structured JSON output.
 - Secure user authentication with bcrypt + JWT.
+- Google sign-in/sign-up with server-side ID token verification.
 - Protected routes for dashboard and history.
 - Search history persistence per user.
 - Live news fetching using GNews API.
@@ -50,7 +51,7 @@ Voice News Reader provides a hands-free way to discover news:
 | Backend         | Node.js, Express 5, TypeScript, MongoDB, Mongoose                            |
 | AI Services     | Groq Whisper (`whisper-large-v3-turbo`), Groq Llama (`llama-3.1-8b-instant`) |
 | External Data   | GNews API                                                                    |
-| Auth & Security | bcrypt, jsonwebtoken                                                         |
+| Auth & Security | bcrypt, jsonwebtoken, Google Identity Services                               |
 | File Upload     | multer                                                                       |
 
 ## Architecture
@@ -110,6 +111,7 @@ Create a `.env` file in each app folder.
 PORT=5000
 MONGO_URI=mongodb+srv://<username>:<password>@<cluster>/<db>?retryWrites=true&w=majority
 JWT_SECRET=replace-with-a-strong-random-secret
+GOOGLE_CLIENT_ID=your_google_web_client_id
 GROQ_API_KEY=gsk_your_groq_key
 ```
 
@@ -117,12 +119,15 @@ GROQ_API_KEY=gsk_your_groq_key
 
 ```env
 VITE_NEWS_API_KEY=your_gnews_api_key
+VITE_GOOGLE_CLIENT_ID=your_google_web_client_id
 ```
 
 Important:
 
 - Frontend backend base URL is currently hardcoded as `http://localhost:5000/api`.
 - Update `frontend/src/services/api.ts` for staging or production deployments.
+- Use the same Google web client ID for `GOOGLE_CLIENT_ID` and `VITE_GOOGLE_CLIENT_ID`.
+- In Google Cloud Console, add your frontend origin (for example `http://localhost:5173`) to Authorized JavaScript origins.
 
 ## Local Development Setup
 
@@ -233,6 +238,28 @@ Response:
 {
   "token": "<jwt>",
   "email": "user@example.com"
+}
+```
+
+#### POST `/auth/google`
+
+Authenticates a user using a Google ID token. Creates the account if it does not already exist.
+
+Request body:
+
+```json
+{
+  "credential": "<google-id-token>"
+}
+```
+
+Response:
+
+```json
+{
+  "token": "<jwt>",
+  "email": "user@example.com",
+  "authProvider": "google"
 }
 ```
 

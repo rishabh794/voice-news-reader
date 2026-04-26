@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/auth-context';
+import GoogleAuthButton from '../components/GoogleAuthButton';
 import { useToast } from '../hooks/useToast';
-import API from '../services/api';
+import { registerWithPassword, type AuthResponse } from '../services/auth';
 
 const EyeIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
@@ -24,19 +26,31 @@ const Register = () => {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
+    const authContext = useContext(AuthContext);
     const { showToast } = useToast();
     const navigate = useNavigate();
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await API.post('/auth/register', { email, password });
+            await registerWithPassword(email, password);
             showToast('Registration successful! Please log in.', 'success');
             navigate('/login');
         } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
             const errorMessage = err.response?.data?.error || 'Registration failed';
             showToast(errorMessage, 'error');
         }
+    };
+
+    const handleGoogleAuthenticated = (authResponse: AuthResponse) => {
+        if (!authContext) {
+            showToast('Authentication context unavailable. Please retry.', 'error');
+            return;
+        }
+
+        authContext.login(authResponse.token, authResponse.email);
+        showToast('Google account ready. Session initialized.', 'success');
+        navigate('/dashboard');
     };
 
     return (
@@ -101,6 +115,12 @@ const Register = () => {
                         Create Account
                     </span>
                 </button>
+
+                <GoogleAuthButton
+                    mode="signup"
+                    onAuthenticated={handleGoogleAuthenticated}
+                    onError={(message) => showToast(message, 'error')}
+                />
             </form>
 
             <div className="mt-8 border-t border-gray-800/60 pt-6 text-center">

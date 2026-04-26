@@ -2,7 +2,8 @@ import React, { useContext, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/auth-context';
 import { useToast } from '../hooks/useToast';
-import API from '../services/api';
+import GoogleAuthButton from '../components/GoogleAuthButton';
+import { loginWithPassword, type AuthResponse } from '../services/auth';
 
 const EyeIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
@@ -32,9 +33,7 @@ const Login = () => {
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const response = await API.post('/auth/login', { email, password });
-
-            const { token, email: userEmail } = response.data;
+            const { token, email: userEmail } = await loginWithPassword(email, password);
 
             if (authContext) {
                 authContext.login(token, userEmail);
@@ -46,6 +45,17 @@ const Login = () => {
             const errorMessage = err.response?.data?.error || 'Login failed';
             showToast(errorMessage, 'error');
         }
+    };
+
+    const handleGoogleAuthenticated = (authResponse: AuthResponse) => {
+        if (!authContext) {
+            showToast('Authentication context unavailable. Please retry.', 'error');
+            return;
+        }
+
+        authContext.login(authResponse.token, authResponse.email);
+        showToast('Google login successful. Session initialized.', 'success');
+        navigate('/dashboard');
     };
 
     return (
@@ -110,6 +120,12 @@ const Login = () => {
                         Initialize Session
                     </span>
                 </button>
+
+                <GoogleAuthButton
+                    mode="signin"
+                    onAuthenticated={handleGoogleAuthenticated}
+                    onError={(message) => showToast(message, 'error')}
+                />
             </form>
 
             <div className="mt-8 border-t border-gray-800/60 pt-6 text-center">
