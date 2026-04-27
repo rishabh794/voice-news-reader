@@ -115,11 +115,7 @@ Source digest: ${llmObservation.slice(0, 3500)}`;
 };
 
 export const handleIntent = async (req: AuthRequest, res: Response): Promise<any> => {
-    const { query } = req.body;
-
-    if (!query || typeof query !== 'string' || query.trim() === '') {
-        return res.status(400).json({ error: 'Query is required and must be a non-empty string.' });
-    }
+    const { query } = req.body as { query: string };
 
     if (!req.user) {
         return res.status(401).json({ error: 'User not authenticated.' });
@@ -130,7 +126,7 @@ export const handleIntent = async (req: AuthRequest, res: Response): Promise<any
             model: MODEL,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
-                { role: 'user', content: query.trim() },
+                { role: 'user', content: query },
             ],
             temperature: 0,
             max_completion_tokens: 64,
