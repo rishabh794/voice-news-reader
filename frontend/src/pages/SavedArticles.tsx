@@ -3,6 +3,7 @@ import API from '../services/api';
 import Loader from '../components/Loader';
 import NewsCard from '../components/NewsCard';
 import type { Article, SavedArticle } from '../types/news';
+import { getErrorMessage, newsSchemas, validateWithSchema } from '../validation';
 
 const SavedArticles = () => {
     const [savedArticles, setSavedArticles] = useState<SavedArticle[]>([]);
@@ -14,9 +15,14 @@ const SavedArticles = () => {
         const fetchSavedArticles = async () => {
             try {
                 const response = await API.get('/saved-articles');
-                setSavedArticles(response.data as SavedArticle[]);
-            } catch (err) {
-                setError('Failed to load saved articles.');
+                const parsedSavedArticles = validateWithSchema(
+                    newsSchemas.savedArticleListSchema,
+                    response.data,
+                    'Received an invalid saved article list from server.'
+                );
+                setSavedArticles(parsedSavedArticles);
+            } catch (err: unknown) {
+                setError(getErrorMessage(err, 'Failed to load saved articles.'));
                 console.error(err);
             } finally {
                 setLoading(false);
@@ -39,8 +45,8 @@ const SavedArticles = () => {
         try {
             await API.delete(`/saved-articles/${saved._id}`);
             setSavedArticles((prev) => prev.filter((item) => item._id !== saved._id));
-        } catch (err) {
-            setError('Failed to remove article from saved list.');
+        } catch (err: unknown) {
+            setError(getErrorMessage(err, 'Failed to remove article from saved list.'));
             console.error(err);
         } finally {
             setPendingUrl(null);

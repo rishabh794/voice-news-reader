@@ -4,6 +4,7 @@ import { AuthContext } from '../context/auth-context';
 import GoogleAuthButton from '../components/GoogleAuthButton';
 import { useToast } from '../hooks/useToast';
 import { registerWithPassword, type AuthResponse } from '../services/auth';
+import { getErrorMessage } from '../validation';
 
 const EyeIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
@@ -36,8 +37,8 @@ const Register = () => {
             await registerWithPassword(email, password);
             showToast('Registration successful! Please log in.', 'success');
             navigate('/login');
-        } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-            const errorMessage = err.response?.data?.error || 'Registration failed';
+        } catch (err: unknown) {
+            const errorMessage = getErrorMessage(err, 'Registration failed');
             showToast(errorMessage, 'error');
         }
     };

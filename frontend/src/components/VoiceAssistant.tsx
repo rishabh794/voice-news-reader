@@ -2,6 +2,7 @@ import { useState, useRef, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/auth-context';
 import API from '../services/api';
+import { intentSchemas, transcribeSchemas, validateWithSchema } from '../validation';
 
 const VoiceAssistant = () => {
     const [isRecording, setIsRecording] = useState(false);
@@ -39,7 +40,13 @@ const VoiceAssistant = () => {
                         headers: { 'Content-Type': 'multipart/form-data' }
                     });
 
-                    const spokenText = transcribeRes.data.text?.toLowerCase();
+                    const transcribedPayload = validateWithSchema(
+                        transcribeSchemas.transcribeResponseSchema,
+                        transcribeRes.data,
+                        'Received an invalid transcription payload from server.'
+                    );
+
+                    const spokenText = transcribedPayload.text.toLowerCase().trim();
                     if (!spokenText) return;
 
                     if (spokenText.includes('history')) {
@@ -62,10 +69,19 @@ const VoiceAssistant = () => {
                         return;
                     }
 
-                    const intentRes = await API.post('/intent', { query: spokenText });
-                    const fullPayload = intentRes.data;
+                    const intentRequest = validateWithSchema(
+                        intentSchemas.intentRequestSchema,
+                        { query: spokenText },
+                        'Recognized speech was empty.'
+                    );
+                    const intentRes = await API.post('/intent', intentRequest);
+                    const fullPayload = validateWithSchema(
+                        intentSchemas.intentResponseSchema,
+                        intentRes.data,
+                        'Received an invalid intent payload from server.'
+                    );
 
-                    if (fullPayload.action === 'search' && fullPayload.topic) {
+                    if (fullPayload.action === 'search') {
                         navigate('/dashboard', { state: { agentPayload: fullPayload } });
                     }
 

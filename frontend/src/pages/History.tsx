@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../services/api';
 import { useToast } from '../hooks/useToast';
+import { getErrorMessage, intentSchemas, newsSchemas, validateWithSchema } from '../validation';
 import {
     HistoryEntryCard,
     HistoryEmptyState,
@@ -120,10 +121,14 @@ const History = () => {
         const fetchHistory = async () => {
             try {
                 const response = await API.get('/history');
-                const entries = response.data as HistoryEntry[];
+                const entries = validateWithSchema(
+                    newsSchemas.historyEntryListSchema,
+                    response.data,
+                    'Received an invalid history payload from server.'
+                );
                 setHistory(sortHistoryEntries(entries));
-            } catch (err) {
-                setError('Failed to load history.');
+            } catch (err: unknown) {
+                setError(getErrorMessage(err, 'Failed to load history.'));
                 console.error(err);
             } finally {
                 setLoading(false);
@@ -178,11 +183,20 @@ const History = () => {
         setRefreshingId(entry._id);
 
         try {
-            const response = await API.post('/intent', { query: entry.query });
-            const payload = response.data;
+            const validatedRequest = validateWithSchema(
+                intentSchemas.intentRequestSchema,
+                { query: entry.query },
+                'History query is empty.'
+            );
+            const response = await API.post('/intent', validatedRequest);
+            const payload = validateWithSchema(
+                intentSchemas.intentResponseSchema,
+                response.data,
+                'Received an invalid intent payload from server.'
+            );
 
-            if (payload.action === 'search' && payload.topic) {
-                const payloadArticles = Array.isArray(payload.articles) ? payload.articles : [];
+            if (payload.action === 'search') {
+                const payloadArticles = payload.articles;
                 if (payloadArticles.length === 0) {
                     const noArticlesMessage = typeof payload.message === 'string' && payload.message.trim()
                         ? payload.message.trim()
@@ -195,8 +209,8 @@ const History = () => {
             }
 
             setError('Could not fetch latest news for that topic.');
-        } catch (err) {
-            setError('Failed to refresh briefing.');
+        } catch (err: unknown) {
+            setError(getErrorMessage(err, 'Failed to refresh briefing.'));
             console.error(err);
         } finally {
             setRefreshingId(null);

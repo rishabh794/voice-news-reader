@@ -4,6 +4,7 @@ import { AuthContext } from '../context/auth-context';
 import { useToast } from '../hooks/useToast';
 import GoogleAuthButton from '../components/GoogleAuthButton';
 import { loginWithPassword, type AuthResponse } from '../services/auth';
+import { getErrorMessage } from '../validation';
 
 const EyeIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
@@ -41,8 +42,8 @@ const Login = () => {
 
             showToast('Login successful. Session initialized.', 'success');
             navigate('/dashboard');
-        } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-            const errorMessage = err.response?.data?.error || 'Login failed';
+        } catch (err: unknown) {
+            const errorMessage = getErrorMessage(err, 'Login failed');
             showToast(errorMessage, 'error');
         }
     };

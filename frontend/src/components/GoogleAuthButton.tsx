@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import { authenticateWithGoogle, type AuthResponse } from '../services/auth';
+import { getErrorMessage } from '../validation';
 
 type GoogleAuthMode = 'signin' | 'signup';
 
@@ -33,9 +34,8 @@ const GoogleAuthButton = ({ mode, onAuthenticated, onError }: GoogleAuthButtonPr
         try {
             const authResponse = await authenticateWithGoogle(response.credential);
             onAuthenticated(authResponse);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (error: any) { 
-            const errorMessage = error.response?.data?.error || 'Google authentication failed';
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error, 'Google authentication failed');
             onError(errorMessage);
         } finally {
             setIsSubmitting(false);

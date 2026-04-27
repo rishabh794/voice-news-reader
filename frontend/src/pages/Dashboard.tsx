@@ -1,19 +1,15 @@
 import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { z } from 'zod';
 import API from '../services/api';
 
 import SearchBar from '../components/SearchBar';
 import NewsCard from '../components/NewsCard';
 import Loader from '../components/Loader';
 import type { Article, SavedArticle } from '../types/news';
+import { getErrorMessage, intentSchemas, newsSchemas, validateWithSchema } from '../validation';
 
-interface SearchIntentPayload {
-    action: 'search';
-    topic: string;
-    summary: string;
-    articles: Article[];
-    message?: string;
-}
+type SearchIntentPayload = z.infer<typeof intentSchemas.searchIntentResponseSchema>;
 
 interface DashboardLocationState {
     agentPayload?: SearchIntentPayload;
@@ -21,6 +17,11 @@ interface DashboardLocationState {
 }
 
 const NO_ARTICLES_MESSAGE = 'No articles found related to this topic';
+
+const dashboardLocationStateSchema = z.object({
+    agentPayload: intentSchemas.searchIntentResponseSchema.optional(),
+    query: z.string().optional()
+});
 
 const Dashboard = () => {
     const [query, setQuery] = useState('');
@@ -125,15 +126,19 @@ const Dashboard = () => {
                 sourceName: article.source?.name || article.sourceName || ''
             });
 
-            const savedArticle = response.data as SavedArticle;
+            const savedArticle = validateWithSchema(
+                newsSchemas.savedArticleSchema,
+                response.data,
+                'Received an invalid saved article response.'
+            );
             if (savedArticle?._id && savedArticle.url) {
                 setSavedArticleIdsByUrl((prev) => ({
                     ...prev,
                     [savedArticle.url]: savedArticle._id
                 }));
             }
-        } catch (err) {
-            setSaveError('Failed to update saved articles. Please retry.');
+        } catch (err: unknown) {
+            setSaveError(getErrorMessage(err, 'Failed to update saved articles. Please retry.'));
             console.error(err);
         } finally {
             setSaveLoadingUrl(null);
@@ -141,22 +146,27 @@ const Dashboard = () => {
     };
 
     const executeIntelligentSearch = useCallback(async (searchQuery: string) => {
-        const trimmedQuery = searchQuery.trim();
-        if (!trimmedQuery) return;
-
         setLoading(true);
         setError('');
 
         try {
-            const response = await API.post('/intent', { query: trimmedQuery });
-            const data = response.data;
+            const { query: trimmedQuery } = validateWithSchema(
+                intentSchemas.intentRequestSchema,
+                { query: searchQuery },
+                'Please enter a search query.'
+            );
 
-            if (data.action === 'search' && Array.isArray(data.articles)) {
-                const topic = typeof data.topic === 'string' && data.topic.trim()
-                    ? data.topic.trim()
-                    : trimmedQuery;
-                const generatedSummary = typeof data.summary === 'string' ? data.summary : '';
-                const noArticlesMessage = typeof data.message === 'string' && data.message.trim()
+            const response = await API.post('/intent', { query: trimmedQuery });
+            const data = validateWithSchema(
+                intentSchemas.intentResponseSchema,
+                response.data,
+                'Received an invalid intent response from server.'
+            );
+
+            if (data.action === 'search') {
+                const topic = data.topic;
+                const generatedSummary = data.summary;
+                const noArticlesMessage = data.message?.trim()
                     ? data.message.trim()
                     : NO_ARTICLES_MESSAGE;
 
@@ -173,7 +183,7 @@ const Dashboard = () => {
                     return;
                 }
 
-                setArticles(data.articles as Article[]);
+                setArticles(data.articles);
                 setQuery(topic);
                 setSummary(generatedSummary);
                 setShowSummary(Boolean(generatedSummary));
@@ -187,8 +197,8 @@ const Dashboard = () => {
                 speakNoArticlesMessage(NO_ARTICLES_MESSAGE);
                 setError(NO_ARTICLES_MESSAGE);
             }
-        } catch (err) {
-            setError('Failed to fetch news. Check the console.');
+        } catch (err: unknown) {
+            setError(getErrorMessage(err, 'Failed to fetch news. Check the console.'));
             console.error(err);
         } finally {
             setLoading(false);
@@ -204,8 +214,13 @@ const Dashboard = () => {
         const fetchSavedArticles = async () => {
             try {
                 const response = await API.get('/saved-articles');
-                setSavedArticleIdsByUrl(buildSavedMap(response.data as SavedArticle[]));
-            } catch (err) {
+                const savedArticles = validateWithSchema(
+                    newsSchemas.savedArticleListSchema,
+                    response.data,
+                    'Received an invalid saved article list from server.'
+                );
+                setSavedArticleIdsByUrl(buildSavedMap(savedArticles));
+            } catch (err: unknown) {
                 console.error('Failed to load saved article list', err);
             }
         };
@@ -214,7 +229,8 @@ const Dashboard = () => {
     }, []);
 
     useEffect(() => {
-        const state = (location.state as DashboardLocationState | null) || null;
+        const parsedState = dashboardLocationStateSchema.safeParse(location.state);
+        const state = parsedState.success ? (parsedState.data as DashboardLocationState) : null;
         const agentPayload = state?.agentPayload;
         const historyQuery = state?.query;
 
@@ -279,7 +295,12 @@ const Dashboard = () => {
             if (savedQuery && savedArticles) {
                 try {
                     setQuery(savedQuery);
-                    setArticles(JSON.parse(savedArticles) as Article[]);
+                    const parsedCachedArticles = validateWithSchema(
+                        newsSchemas.articleListSchema,
+                        JSON.parse(savedArticles),
+                        'Stored dashboard articles are invalid.'
+                    );
+                    setArticles(parsedCachedArticles);
                     setSummary(savedSummary);
                     setShowSummary(Boolean(savedSummary));
                     lastHandledPayload.current = `cache:${savedQuery}`;
