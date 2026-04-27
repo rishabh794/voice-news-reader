@@ -46,6 +46,7 @@ const History = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeCategory, setActiveCategory] = useState<'All' | HistoryCategory>('All');
     const [deletingIds, setDeletingIds] = useState<Record<string, boolean>>({});
+    const [isClearingAll, setIsClearingAll] = useState(false);
     const navigate = useNavigate();
     const { showToast } = useToast();
 
@@ -262,6 +263,36 @@ const History = () => {
         }
     };
 
+    const handleClearAll = async () => {
+        if (isClearingAll || history.length === 0) return;
+
+        const previousHistory = [...history];
+
+        setError('');
+        setHistory([]);
+        setExpandedSourcesById({});
+        setDeletingIds({});
+
+        if (activeAudioEntryId) {
+            window.speechSynthesis.cancel();
+            setActiveAudioEntryId(null);
+            setIsAudioPaused(false);
+        }
+
+        setIsClearingAll(true);
+
+        try {
+            await API.delete('/history');
+            showToast('All history entries cleared.', 'success');
+        } catch (err: unknown) {
+            setHistory(sortHistoryEntries(previousHistory));
+            setError(getErrorMessage(err, 'Failed to clear history. Please retry.'));
+            console.error(err);
+        } finally {
+            setIsClearingAll(false);
+        }
+    };
+
     const formatTimestamp = (entry: HistoryEntry) => {
         const parsed = getEntryDate(entry);
         if (!parsed) return 'Unknown time';
@@ -277,7 +308,11 @@ const History = () => {
 
     return (
         <div className="w-full max-w-5xl mx-auto mt-8 p-6 pt-10 bg-[#0d0d12] border border-gray-800/80 rounded-xl font-sans text-gray-200">
-            <HistoryHeader />
+            <HistoryHeader
+                canClearAll={!loading && history.length > 0}
+                isClearingAll={isClearingAll}
+                onClearAll={handleClearAll}
+            />
 
             {!loading && history.length > 0 && (
                 <HistoryFilters

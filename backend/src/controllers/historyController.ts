@@ -52,3 +52,21 @@ export const deleteHistory = async (req: AuthRequest, res: Response): Promise<an
         return res.status(500).json({ error: 'Server error while deleting history entry' });
     }
 };
+
+export const clearHistory = async (req: AuthRequest, res: Response): Promise<any> => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        const result = await History.deleteMany({ userId: req.user.id });
+
+        return res.json({
+            message: 'History cleared successfully',
+            deletedCount: result.deletedCount ?? 0
+        });
+    } catch (error) {
+        console.error('Clear History Error:', error);
+        return res.status(500).json({ error: 'Server error while clearing history' });
+    }
+};
