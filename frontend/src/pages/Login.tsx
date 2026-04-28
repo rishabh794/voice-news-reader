@@ -1,8 +1,11 @@
-import React, { useContext, useState } from 'react';
+import { useContext, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/auth-context';
 import { useToast } from '../hooks/useToast';
 import GoogleAuthButton from '../components/GoogleAuthButton';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import Input from '../components/ui/Input';
 import { loginWithPassword, type AuthResponse } from '../services/auth';
 import { getErrorMessage } from '../validation';
 
@@ -26,13 +29,16 @@ const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const authContext = useContext(AuthContext);
     const { showToast } = useToast();
     const navigate = useNavigate();
 
-    const handleLogin = async (e: React.FormEvent) => {
+    const handleLogin = async (e: FormEvent) => {
         e.preventDefault();
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         try {
             const { token, email: userEmail } = await loginWithPassword(email, password);
 
@@ -45,6 +51,8 @@ const Login = () => {
         } catch (err: unknown) {
             const errorMessage = getErrorMessage(err, 'Login failed');
             showToast(errorMessage, 'error');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -60,85 +68,87 @@ const Login = () => {
     };
 
     return (
-        <div className="w-full max-w-md mx-auto mt-12 bg-[#0d0d12]/90 backdrop-blur-xl border border-gray-800/80 p-8 rounded-2xl shadow-[0_0_40px_-10px_rgba(6,182,212,0.15)] relative overflow-hidden text-gray-100 font-sans">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-indigo-500 shadow-[0_0_15px_rgba(6,182,212,0.8)]"></div>
-
-            <div className="mb-8 text-center">
-                <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400 font-mono tracking-tight uppercase">
-                    Login
-                </h2>
-                <p className="text-gray-400 text-sm mt-2 font-mono opacity-80">
-                    Authenticate to access voice console
-                </p>
-            </div>
-
-            <form onSubmit={handleLogin} className="flex flex-col gap-5">
-                <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-mono text-cyan-500 uppercase tracking-wider pl-1">
-                        Target Email
-                    </label>
-                    <input
-                        type="email"
-                        placeholder="user@network.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        className="w-full bg-[#13131a] border border-gray-700/60 rounded-xl px-4 py-3 text-gray-200 font-mono text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/70 focus:ring-1 focus:ring-cyan-500/50 transition-all duration-300"
-                    />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-mono text-cyan-500 uppercase tracking-wider pl-1">
-                        Access Key
-                    </label>
-                    <div className="relative">
-                        <input
-                            type={showPassword ? 'text' : 'password'}
-                            placeholder="********"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            className="w-full bg-[#13131a] border border-gray-700/60 rounded-xl px-4 py-3 pr-12 text-gray-200 font-mono text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/70 focus:ring-1 focus:ring-cyan-500/50 transition-all duration-300"
-                        />
-                        <button
-                            type="button"
-                            onClick={() => setShowPassword((prevShowPassword) => !prevShowPassword)}
-                            aria-label={showPassword ? 'Hide password' : 'Show password'}
-                            className="absolute inset-y-0 right-3 my-auto flex h-9 w-9 items-center justify-center text-gray-400 transition-colors hover:text-cyan-300"
-                        >
-                            {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                        </button>
+        <div className="min-h-screen grid lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="relative hidden lg:flex flex-col justify-between bg-surface px-12 py-12">
+                <div className="text-sm font-mono uppercase tracking-wider text-subtle">VoiceNews</div>
+                <div className="space-y-6 max-w-md">
+                    <h1 className="text-4xl font-display text-text">
+                        Track the news that moves your industry.
+                    </h1>
+                    <p className="text-[15px] text-muted">
+                        VoiceNews delivers concise market intelligence with a calm, low-strain interface designed for long research sessions.
+                    </p>
+                    <div className="space-y-2 text-[15px] text-muted">
+                        <p>Built for analysts, researchers, and operators.</p>
+                        <p>Fast topic scanning with reliable source links.</p>
+                        <p>Voice-first briefings with premium readability.</p>
                     </div>
                 </div>
+                <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute -right-24 top-10 h-72 w-72 rounded-full bg-primary/10 blur-3xl"></div>
+                    <div className="absolute bottom-10 left-10 h-64 w-64 rounded-full bg-success/10 blur-3xl"></div>
+                </div>
+            </div>
 
-                <button
-                    type="submit"
-                    className="mt-4 w-full relative group overflow-hidden bg-gray-900 border border-cyan-500/30 rounded-xl px-4 py-3 text-cyan-400 font-mono font-bold uppercase tracking-widest hover:text-white transition-all duration-300"
-                >
-                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-600/20 to-indigo-600/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
-                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 shadow-[inset_0_0_20px_rgba(6,182,212,0.4)] transition-opacity duration-300"></div>
-                    <span className="relative z-10 flex items-center justify-center gap-2">
-                        Initialize Session
-                    </span>
-                </button>
+            <div className="flex items-center justify-center px-6 py-12">
+                <Card className="w-full max-w-md p-8" variant="card">
+                    <div className="mb-6 space-y-2">
+                        <h2 className="text-2xl font-display text-text">Welcome back</h2>
+                        <p className="text-[15px] text-muted">Sign in to continue your briefings.</p>
+                    </div>
 
-                <GoogleAuthButton
-                    mode="signin"
-                    onAuthenticated={handleGoogleAuthenticated}
-                    onError={(message) => showToast(message, 'error')}
-                />
-            </form>
+                    <form onSubmit={handleLogin} className="space-y-5">
+                        <Input
+                            type="email"
+                            label="Email"
+                            placeholder="name@company.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                        />
 
-            <div className="mt-8 border-t border-gray-800/60 pt-6 text-center">
-                <p className="text-gray-500 text-sm font-mono">
-                    Unregistered?{' '}
-                    <Link
-                        to="/register"
-                        className="text-indigo-400 hover:text-cyan-400 transition-colors duration-300 hover:drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]"
-                    >
-                        Register here
-                    </Link>
-                </p>
+                        <div className="space-y-2">
+                            <label className="text-xs font-mono uppercase tracking-wider text-subtle">
+                                Password
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    placeholder="********"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                    className="w-full rounded-lg border border-border/70 bg-surface px-3 py-2 pr-10 text-[15px] text-text placeholder:text-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary/50 transition-colors duration-150"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((prevShowPassword) => !prevShowPassword)}
+                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                    className="absolute inset-y-0 right-2 flex h-9 w-9 items-center justify-center text-subtle hover:text-text transition-colors duration-150"
+                                >
+                                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                                </button>
+                            </div>
+                        </div>
+
+                        <Button type="submit" className="w-full" disabled={isSubmitting}>
+                            {isSubmitting ? 'Signing in...' : 'Sign in'}
+                        </Button>
+
+                        <GoogleAuthButton
+                            mode="signin"
+                            onAuthenticated={handleGoogleAuthenticated}
+                            onError={(message) => showToast(message, 'error')}
+                        />
+                    </form>
+
+                    <div className="mt-6 text-[15px] text-subtle">
+                        New to VoiceNews?{' '}
+                        <Link to="/register" className="text-primary hover:text-text transition-colors duration-150">
+                            Create an account
+                        </Link>
+                    </div>
+                </Card>
             </div>
         </div>
     );

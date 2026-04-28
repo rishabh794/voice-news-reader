@@ -11,6 +11,7 @@ dotenv.config();
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const MODEL = 'llama-3.1-8b-instant';
+const LLM_TIMEOUT_MS = 20000;
 
 const SYSTEM_PROMPT = `You are a natural language router for a news application.
 Analyze the user's input and extract their intent.
@@ -86,16 +87,19 @@ const classifyNewsCategory = async (topic: string, summary: string, llmObservati
 Summary: ${summary}
 Source digest: ${llmObservation.slice(0, 3500)}`;
 
-        const completion = await groq.chat.completions.create({
-            model: MODEL,
-            messages: [
-                { role: 'system', content: CATEGORY_SYSTEM_PROMPT },
-                { role: 'user', content: categoryPrompt }
-            ],
-            temperature: 0,
-            max_completion_tokens: 32,
-            response_format: { type: 'json_object' }
-        });
+        const completion = await withTimeout(
+            groq.chat.completions.create({
+                model: MODEL,
+                messages: [
+                    { role: 'system', content: CATEGORY_SYSTEM_PROMPT },
+                    { role: 'user', content: categoryPrompt }
+                ],
+                temperature: 0,
+                max_completion_tokens: 32,
+                response_format: { type: 'json_object' }
+            }),
+            LLM_TIMEOUT_MS
+        );
 
         const content = completion.choices[0]?.message?.content;
         if (!content) return fallbackCategory;
@@ -114,6 +118,21 @@ Source digest: ${llmObservation.slice(0, 3500)}`;
     }
 };
 
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+            reject(new Error('LLM request timed out.'));
+        }, timeoutMs);
+    });
+
+    try {
+        return await Promise.race([promise, timeoutPromise]);
+    } finally {
+        if (timeoutHandle) clearTimeout(timeoutHandle);
+    }
+};
+
 export const handleIntent = async (req: AuthRequest, res: Response): Promise<any> => {
     const { query } = req.body as { query: string };
 
@@ -122,16 +141,19 @@ export const handleIntent = async (req: AuthRequest, res: Response): Promise<any
     }
 
     try {
-        const chatCompletion = await groq.chat.completions.create({
-            model: MODEL,
-            messages: [
-                { role: 'system', content: SYSTEM_PROMPT },
-                { role: 'user', content: query },
-            ],
-            temperature: 0,
-            max_completion_tokens: 64,
-            response_format: { type: 'json_object' },
-        });
+        const chatCompletion = await withTimeout(
+            groq.chat.completions.create({
+                model: MODEL,
+                messages: [
+                    { role: 'system', content: SYSTEM_PROMPT },
+                    { role: 'user', content: query },
+                ],
+                temperature: 0,
+                max_completion_tokens: 64,
+                response_format: { type: 'json_object' },
+            }),
+            LLM_TIMEOUT_MS
+        );
 
         const content = chatCompletion.choices[0]?.message?.content;
         if (!content) return res.status(500).json({ error: 'Empty response from LLM.' });
@@ -162,12 +184,15 @@ export const handleIntent = async (req: AuthRequest, res: Response): Promise<any
             let summary = `Here are the latest articles on ${topic}.`;
             const summaryPrompt = `You are an expert news anchor. Based ONLY on the following article headlines and descriptions, write a conversational, 2-sentence summary of the current events. Do not use external knowledge.\n\n${llmObservation}`;
 
-            const summaryCompletion = await groq.chat.completions.create({
-                model: MODEL,
-                messages: [{ role: 'user', content: summaryPrompt }],
-                temperature: 0.3,
-                max_completion_tokens: 150,
-            });
+            const summaryCompletion = await withTimeout(
+                groq.chat.completions.create({
+                    model: MODEL,
+                    messages: [{ role: 'user', content: summaryPrompt }],
+                    temperature: 0.3,
+                    max_completion_tokens: 150,
+                }),
+                LLM_TIMEOUT_MS
+            );
 
             summary = summaryCompletion.choices[0]?.message?.content || summary;
 
@@ -195,6 +220,9 @@ export const handleIntent = async (req: AuthRequest, res: Response): Promise<any
     } catch (error: unknown) {
         console.error('Groq API error:', error);
         const message = error instanceof Error ? error.message : 'Unknown error';
+        if (message.includes('timed out')) {
+            return res.status(504).json({ error: 'LLM request timed out. Please retry.', detail: message });
+        }
         return res.status(502).json({ error: 'Failed to reach LLM.', detail: message });
     }
 };

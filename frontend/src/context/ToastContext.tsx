@@ -10,9 +10,9 @@ interface Toast {
 }
 
 const toastVariants: Record<ToastType, string> = {
-  success: 'border-emerald-500/60 bg-emerald-950/80 text-emerald-200',
-  error: 'border-red-500/60 bg-red-950/80 text-red-200',
-  info: 'border-cyan-500/60 bg-cyan-950/80 text-cyan-100',
+  success: 'border-success/40 bg-success/15 text-success',
+  error: 'border-danger/40 bg-danger/15 text-danger',
+  info: 'border-primary/40 bg-primary/15 text-primary',
 };
 
 export const ToastProvider = ({ children }: { children: ReactNode }) => {
@@ -54,7 +54,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
             aria-live="polite"
           >
             <div className="flex items-start justify-between gap-3">
-              <p className="text-sm font-medium">{toast.message}</p>
+              <p className="text-[15px] font-medium">{toast.message}</p>
               <button
                 type="button"
                 onClick={() => removeToast(toast.id)}

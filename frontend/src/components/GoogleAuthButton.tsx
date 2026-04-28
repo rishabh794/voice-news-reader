@@ -45,9 +45,9 @@ const GoogleAuthButton = ({ mode, onAuthenticated, onError }: GoogleAuthButtonPr
     return (
         <div className="mt-6 space-y-4">
             <div className="relative flex items-center">
-                <div className="h-px flex-1 bg-gray-800/80"></div>
-                <span className="px-3 text-xs uppercase tracking-wider text-gray-500 font-mono">or continue with</span>
-                <div className="h-px flex-1 bg-gray-800/80"></div>
+                <div className="h-px flex-1 bg-border/70"></div>
+                <span className="px-3 text-xs uppercase tracking-wider text-subtle font-mono">or continue with</span>
+                <div className="h-px flex-1 bg-border/70"></div>
             </div>
 
             <div className={`flex justify-center ${isSubmitting ? 'pointer-events-none opacity-70' : ''}`}>
@@ -64,7 +64,7 @@ const GoogleAuthButton = ({ mode, onAuthenticated, onError }: GoogleAuthButtonPr
             </div>
 
             {isSubmitting && (
-                <p className="text-center text-xs text-cyan-300 font-mono">Verifying Google account...</p>
+                <p className="text-center text-xs text-subtle">Verifying Google account...</p>
             )}
         </div>
     );

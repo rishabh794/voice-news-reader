@@ -1,4 +1,7 @@
 import type { Article } from '../types/news';
+import Badge from './ui/Badge';
+import Button from './ui/Button';
+import Card from './ui/Card';
 
 interface NewsCardProps {
     article: Article;
@@ -9,12 +12,9 @@ interface NewsCardProps {
 
 const NewsCard = ({ article, isSaved = false, onToggleSave, saveDisabled = false }: NewsCardProps) => {
     return (
-        <div className="group relative flex flex-col bg-[#0d0d12]/90 backdrop-blur-md border border-gray-800/80 rounded-xl overflow-hidden hover:border-cyan-500/40 hover:shadow-[0_0_30px_-10px_rgba(6,182,212,0.15)] transition-all duration-300">
-            {/* Top border glow effect on hover */}
-            <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-cyan-500 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"></div>
-
+        <Card className="group relative flex h-full flex-col overflow-hidden transition-colors duration-150 hover:border-border-strong">
             {onToggleSave && (
-                <button
+                <Button
                     type="button"
                     onClick={(event) => {
                         event.preventDefault();
@@ -22,61 +22,56 @@ const NewsCard = ({ article, isSaved = false, onToggleSave, saveDisabled = false
                         onToggleSave(article);
                     }}
                     disabled={saveDisabled}
-                    className={`absolute top-3 right-3 z-20 px-3 py-1 rounded-full text-[10px] font-mono uppercase tracking-wider border transition-all duration-200 ${
+                    variant="outline"
+                    size="sm"
+                    className={[
+                        'absolute right-4 top-4 z-10 rounded-full px-3 text-[11px] font-mono uppercase tracking-wider',
                         isSaved
-                            ? 'text-cyan-300 border-cyan-400/40 bg-cyan-500/15 hover:bg-cyan-500/20'
-                            : 'text-gray-300 border-gray-600/70 bg-[#0d0d12]/80 hover:border-cyan-500/40 hover:text-cyan-300'
-                    } ${saveDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            ? 'border-primary/50 text-primary bg-primary/12 hover:border-primary/70 hover:bg-primary/20'
+                            : 'bg-base/70 text-muted hover:text-text hover:border-border-strong'
+                    ].join(' ')}
                 >
                     {saveDisabled ? 'Saving...' : isSaved ? 'Saved' : 'Save'}
-                </button>
+                </Button>
             )}
 
             {article.image && (
                 <div className="relative">
-                    <img 
-                        src={article.image} 
-                        alt="News thumbnail" 
-                        className="w-full h-[160px] object-cover opacity-70 group-hover:opacity-100 transition-opacity duration-500" 
+                    <img
+                        src={article.image}
+                        alt="News thumbnail"
+                        className="h-[170px] w-full object-cover opacity-80 transition-opacity duration-150 group-hover:opacity-100"
                     />
-                    {/* Gradient overlay to smoothly blend the image into the dark card background */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d12]/90 via-transparent to-transparent"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-base via-transparent to-transparent"></div>
                 </div>
             )}
-            
-            <div className="flex flex-col flex-grow p-5 z-10">
-                <h3 className="text-lg font-medium text-gray-100 leading-snug mb-3 group-hover:text-white transition-colors duration-300">
-                    {article.title}
-                </h3>
-                
-                <p className="text-sm text-gray-400 mb-6 line-clamp-3 leading-relaxed font-sans opacity-80">
-                    {article.description}
-                </p>
 
-                {article.source?.name && (
-                    <p className="text-[11px] text-gray-500 font-mono mb-3 uppercase tracking-wide">
-                        Source: {article.source.name}
+            <div className="flex flex-1 flex-col gap-4 p-5">
+                <div className="space-y-2">
+                    <h3 className="text-lg font-display text-text leading-snug">
+                        {article.title}
+                    </h3>
+                    <p className="text-[15px] text-muted leading-relaxed line-clamp-3">
+                        {article.description}
                     </p>
+                </div>
+
+                {(article.source?.name || article.sourceName) && (
+                    <Badge variant="neutral" className="w-fit normal-case">
+                        {article.source?.name || article.sourceName}
+                    </Badge>
                 )}
-                {!article.source?.name && article.sourceName && (
-                    <p className="text-[11px] text-gray-500 font-mono mb-3 uppercase tracking-wide">
-                        Source: {article.sourceName}
-                    </p>
-                )}
-                
-                <a 
-                    href={article.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="mt-auto inline-flex items-center w-fit text-cyan-500 font-mono text-xs uppercase tracking-widest hover:text-cyan-300 transition-colors duration-200"
+
+                <a
+                    href={article.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-auto inline-flex items-center text-xs font-mono uppercase tracking-wider text-primary transition-colors duration-150 hover:text-text"
                 >
-                    <span className="mr-2 text-indigo-500 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
-                        &gt;
-                    </span>
-                    Read_Article
+                    Read article
                 </a>
             </div>
-        </div>
+        </Card>
     );
 };
 

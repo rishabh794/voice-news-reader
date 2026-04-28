@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import API from '../services/api';
 import Loader from '../components/Loader';
 import NewsCard from '../components/NewsCard';
+import EmptyState from '../components/ui/EmptyState';
+import PageHeader from '../components/ui/PageHeader';
+import SectionContainer from '../components/ui/SectionContainer';
 import type { Article, SavedArticle } from '../types/news';
 import { getErrorMessage, newsSchemas, validateWithSchema } from '../validation';
 
@@ -9,9 +12,11 @@ const SavedArticles = () => {
     const [savedArticles, setSavedArticles] = useState<SavedArticle[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+    const [pendingByUrl, setPendingByUrl] = useState<Record<string, boolean>>({});
+    const isMountedRef = useRef(true);
 
     useEffect(() => {
+        isMountedRef.current = true;
         const fetchSavedArticles = async () => {
             try {
                 const response = await API.get('/saved-articles');
@@ -20,26 +25,32 @@ const SavedArticles = () => {
                     response.data,
                     'Received an invalid saved article list from server.'
                 );
+                if (!isMountedRef.current) return;
                 setSavedArticles(parsedSavedArticles);
             } catch (err: unknown) {
+                if (!isMountedRef.current) return;
                 setError(getErrorMessage(err, 'Failed to load saved articles.'));
                 console.error(err);
             } finally {
+                if (!isMountedRef.current) return;
                 setLoading(false);
             }
         };
 
         fetchSavedArticles();
+        return () => {
+            isMountedRef.current = false;
+        };
     }, []);
 
     const handleToggleSave = async (article: Article) => {
         const currentUrl = article.url;
-        if (!currentUrl || pendingUrl === currentUrl) return;
+        if (!currentUrl || pendingByUrl[currentUrl]) return;
 
         const saved = savedArticles.find((item) => item.url === currentUrl);
         if (!saved?._id) return;
 
-        setPendingUrl(currentUrl);
+        setPendingByUrl((prev) => ({ ...prev, [currentUrl]: true }));
         setError('');
 
         try {
@@ -49,25 +60,36 @@ const SavedArticles = () => {
             setError(getErrorMessage(err, 'Failed to remove article from saved list.'));
             console.error(err);
         } finally {
-            setPendingUrl(null);
+            if (!isMountedRef.current) return;
+            setPendingByUrl((prev) => {
+                const next = { ...prev };
+                delete next[currentUrl];
+                return next;
+            });
         }
     };
 
     return (
-        <div className="pt-20 px-5 pb-5 max-w-[1200px] mx-auto">
-            <div className="mb-8 border border-gray-800/70 bg-[#0d0d12]/90 rounded-xl px-5 py-4">
-                <h2 className="text-2xl text-cyan-400 font-mono uppercase tracking-wide">Saved Articles</h2>
-                <p className="text-gray-400 text-sm mt-2 font-mono">Your personal reading list, synchronized across sessions.</p>
-            </div>
+        <SectionContainer className="space-y-6">
+            <PageHeader
+                title="Saved Articles"
+                subtitle="Your personal reading list, synchronized across sessions."
+            />
 
-            {error && <p className="text-red-500 font-bold mb-5">{error}</p>}
+            {error && (
+                <div className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-[15px] text-danger">
+                    {error}
+                </div>
+            )}
 
             {loading ? (
                 <Loader />
             ) : savedArticles.length === 0 ? (
-                <div className="border border-gray-800/70 bg-[#0d0d12]/90 rounded-xl px-5 py-8 text-center">
-                    <p className="text-gray-400 font-mono text-sm">No saved articles yet. Save a headline from Dashboard to build your list.</p>
-                </div>
+                <EmptyState
+                    title="No saved articles"
+                    description="Save a headline from the dashboard to build your list."
+                    muted
+                />
             ) : (
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-5">
                     {savedArticles.map((saved) => (
@@ -84,12 +106,12 @@ const SavedArticles = () => {
                             }}
                             isSaved
                             onToggleSave={handleToggleSave}
-                            saveDisabled={pendingUrl === saved.url}
+                            saveDisabled={Boolean(saved.url && pendingByUrl[saved.url])}
                         />
                     ))}
                 </div>
             )}
-        </div>
+        </SectionContainer>
     );
 };
 

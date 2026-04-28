@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../services/api';
+import useAudioPlayer from '../hooks/useAudioPlayer';
 import { useToast } from '../hooks/useToast';
 import { getErrorMessage, intentSchemas, newsSchemas, validateWithSchema } from '../validation';
 import {
@@ -11,6 +12,7 @@ import {
     HistoryHeader,
     HistoryLoadingState
 } from '../components/history';
+import SectionContainer from '../components/ui/SectionContainer';
 import { AI_HISTORY_CATEGORIES, type HistoryCategory, type HistoryEntry } from '../types/news';
 
 const REFRESH_COOLDOWN_MS = 24 * 60 * 60 * 1000;
@@ -40,15 +42,27 @@ const History = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [expandedSourcesById, setExpandedSourcesById] = useState<Record<string, boolean>>({});
+    const [expandedSummaryById, setExpandedSummaryById] = useState<Record<string, boolean>>({});
     const [refreshingId, setRefreshingId] = useState<string | null>(null);
     const [activeAudioEntryId, setActiveAudioEntryId] = useState<string | null>(null);
-    const [isAudioPaused, setIsAudioPaused] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeCategory, setActiveCategory] = useState<'All' | HistoryCategory>('All');
     const [deletingIds, setDeletingIds] = useState<Record<string, boolean>>({});
     const [isClearingAll, setIsClearingAll] = useState(false);
+    const isMountedRef = useRef(true);
     const navigate = useNavigate();
     const { showToast } = useToast();
+    const historyAudio = useAudioPlayer();
+    const {
+        play: playHistoryAudio,
+        togglePause: toggleHistoryAudioPause,
+        stop: stopHistoryAudio,
+        isLoading: isHistoryAudioLoading,
+        isPlaying: isHistoryAudioPlaying,
+        isPaused: isHistoryAudioPaused,
+        isEnded: isHistoryAudioEnded,
+        isError: isHistoryAudioError
+    } = historyAudio;
 
     const getEntryDate = useCallback((entry: HistoryEntry): Date | null => {
         const dateValue = entry.createdAt || entry.timestamp;
@@ -84,41 +98,19 @@ const History = () => {
     }, [getEntryDate]);
 
     const playAudio = useCallback((entryId: string, text: string) => {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-US';
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-
-        utterance.onend = () => {
-            setActiveAudioEntryId((currentId) => (currentId === entryId ? null : currentId));
-            setIsAudioPaused(false);
-        };
-
-        utterance.onerror = () => {
-            setActiveAudioEntryId((currentId) => (currentId === entryId ? null : currentId));
-            setIsAudioPaused(false);
-        };
-
+        const isCurrentEntry = activeAudioEntryId === entryId;
+        if (isCurrentEntry && isHistoryAudioPlaying) return;
         setActiveAudioEntryId(entryId);
-        setIsAudioPaused(false);
-        window.speechSynthesis.speak(utterance);
-    }, []);
+        playHistoryAudio(text);
+    }, [activeAudioEntryId, isHistoryAudioPlaying, playHistoryAudio]);
 
     const togglePauseAudio = useCallback((entryId: string) => {
         if (activeAudioEntryId !== entryId) return;
-
-        if (isAudioPaused) {
-            window.speechSynthesis.resume();
-            setIsAudioPaused(false);
-            return;
-        }
-
-        window.speechSynthesis.pause();
-        setIsAudioPaused(true);
-    }, [activeAudioEntryId, isAudioPaused]);
+        toggleHistoryAudioPause();
+    }, [activeAudioEntryId, toggleHistoryAudioPause]);
 
     useEffect(() => {
+        isMountedRef.current = true;
         const fetchHistory = async () => {
             try {
                 const response = await API.get('/history');
@@ -127,23 +119,35 @@ const History = () => {
                     response.data,
                     'Received an invalid history payload from server.'
                 );
+                if (!isMountedRef.current) return;
                 setHistory(sortHistoryEntries(entries));
             } catch (err: unknown) {
+                if (!isMountedRef.current) return;
                 setError(getErrorMessage(err, 'Failed to load history.'));
                 console.error(err);
             } finally {
+                if (!isMountedRef.current) return;
                 setLoading(false);
             }
         };
 
         fetchHistory();
+        return () => {
+            isMountedRef.current = false;
+        };
     }, []);
 
     useEffect(() => {
+        if (isHistoryAudioEnded || isHistoryAudioError) {
+            setActiveAudioEntryId(null);
+        }
+    }, [isHistoryAudioEnded, isHistoryAudioError]);
+
+    useEffect(() => {
         return () => {
-            window.speechSynthesis.cancel();
+            stopHistoryAudio();
         };
-    }, []);
+    }, [stopHistoryAudio]);
 
     const filteredHistory = useMemo(() => {
         const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -171,6 +175,13 @@ const History = () => {
 
     const toggleSources = (entryId: string) => {
         setExpandedSourcesById((prev) => ({
+            ...prev,
+            [entryId]: !prev[entryId]
+        }));
+    };
+
+    const toggleSummary = (entryId: string) => {
+        setExpandedSummaryById((prev) => ({
             ...prev,
             [entryId]: !prev[entryId]
         }));
@@ -211,9 +222,11 @@ const History = () => {
 
             setError('Could not fetch latest news for that topic.');
         } catch (err: unknown) {
+            if (!isMountedRef.current) return;
             setError(getErrorMessage(err, 'Failed to refresh briefing.'));
             console.error(err);
         } finally {
+            if (!isMountedRef.current) return;
             setRefreshingId(null);
         }
     };
@@ -232,11 +245,16 @@ const History = () => {
             delete next[entryId];
             return next;
         });
+        setExpandedSummaryById((prev) => {
+            if (!(entryId in prev)) return prev;
+            const next = { ...prev };
+            delete next[entryId];
+            return next;
+        });
 
         if (activeAudioEntryId === entryId) {
-            window.speechSynthesis.cancel();
+            stopHistoryAudio();
             setActiveAudioEntryId(null);
-            setIsAudioPaused(false);
         }
 
         setDeletingIds((prev) => ({
@@ -248,6 +266,7 @@ const History = () => {
             await API.delete(`/history/${entryId}`);
             showToast('History entry deleted.', 'success');
         } catch (err) {
+            if (!isMountedRef.current) return;
             setHistory((prev) => {
                 if (prev.some((entry) => entry._id === removedEntry._id)) return prev;
                 return sortHistoryEntries([...prev, removedEntry]);
@@ -255,6 +274,7 @@ const History = () => {
             setError('Failed to delete history entry. Please retry.');
             console.error(err);
         } finally {
+            if (!isMountedRef.current) return;
             setDeletingIds((prev) => {
                 const next = { ...prev };
                 delete next[entryId];
@@ -271,12 +291,12 @@ const History = () => {
         setError('');
         setHistory([]);
         setExpandedSourcesById({});
+        setExpandedSummaryById({});
         setDeletingIds({});
 
         if (activeAudioEntryId) {
-            window.speechSynthesis.cancel();
+            stopHistoryAudio();
             setActiveAudioEntryId(null);
-            setIsAudioPaused(false);
         }
 
         setIsClearingAll(true);
@@ -285,10 +305,12 @@ const History = () => {
             await API.delete('/history');
             showToast('All history entries cleared.', 'success');
         } catch (err: unknown) {
+            if (!isMountedRef.current) return;
             setHistory(sortHistoryEntries(previousHistory));
             setError(getErrorMessage(err, 'Failed to clear history. Please retry.'));
             console.error(err);
         } finally {
+            if (!isMountedRef.current) return;
             setIsClearingAll(false);
         }
     };
@@ -307,7 +329,7 @@ const History = () => {
     };
 
     return (
-        <div className="w-full max-w-5xl mx-auto mt-8 p-6 pt-10 bg-[#0d0d12] border border-gray-800/80 rounded-xl font-sans text-gray-200">
+        <SectionContainer className="space-y-6">
             <HistoryHeader
                 canClearAll={!loading && history.length > 0}
                 isClearingAll={isClearingAll}
@@ -347,6 +369,7 @@ const History = () => {
                 <div className="space-y-4">
                     {filteredHistory.map((entry) => {
                         const isExpanded = Boolean(expandedSourcesById[entry._id]);
+                        const isSummaryExpanded = Boolean(expandedSummaryById[entry._id]);
                         const isEntryRefreshing = refreshingId === entry._id;
                         const refreshLocked = isRefreshLocked(entry);
                         const isEntrySpeaking = activeAudioEntryId === entry._id;
@@ -360,8 +383,10 @@ const History = () => {
                                 entryCategory={entryCategory}
                                 formattedTimestamp={formatTimestamp(entry)}
                                 isExpanded={isExpanded}
+                                isSummaryExpanded={isSummaryExpanded}
                                 isEntrySpeaking={isEntrySpeaking}
-                                isAudioPaused={isAudioPaused}
+                                isAudioPaused={isEntrySpeaking && isHistoryAudioPaused}
+                                isAudioLoading={isHistoryAudioLoading && activeAudioEntryId === entry._id}
                                 isEntryRefreshing={isEntryRefreshing}
                                 refreshLocked={refreshLocked}
                                 cooldownLabel={getCooldownLabel(entry)}
@@ -369,6 +394,7 @@ const History = () => {
                                 onPlayAudio={playAudio}
                                 onTogglePauseAudio={togglePauseAudio}
                                 onToggleSources={toggleSources}
+                                onToggleSummary={toggleSummary}
                                 onRefresh={handleRefresh}
                                 onDelete={handleDelete}
                             />
@@ -376,7 +402,7 @@ const History = () => {
                     })}
                 </div>
             )}
-        </div>
+        </SectionContainer>
     );
 };
 

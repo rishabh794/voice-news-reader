@@ -2,8 +2,14 @@ import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import API from '../services/api';
+import useAudioPlayer from '../hooks/useAudioPlayer';
 
-import SearchBar from '../components/SearchBar';
+import SearchBar from '../components/ui/SearchBar';
+import Badge from '../components/ui/Badge';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import PageHeader from '../components/ui/PageHeader';
+import SectionContainer from '../components/ui/SectionContainer';
 import NewsCard from '../components/NewsCard';
 import Loader from '../components/Loader';
 import type { Article, SavedArticle } from '../types/news';
@@ -27,66 +33,40 @@ const Dashboard = () => {
     const [query, setQuery] = useState('');
     const [summary, setSummary] = useState('');
     const [showSummary, setShowSummary] = useState(false);
-    const [isSummaryAudioPlaying, setIsSummaryAudioPlaying] = useState(false);
-    const [isSummaryAudioPaused, setIsSummaryAudioPaused] = useState(false);
     const [articles, setArticles] = useState<Article[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [saveError, setSaveError] = useState('');
     const [savedArticleIdsByUrl, setSavedArticleIdsByUrl] = useState<Record<string, string>>({});
-    const [saveLoadingUrl, setSaveLoadingUrl] = useState<string | null>(null);
+    const [pendingSaveByUrl, setPendingSaveByUrl] = useState<Record<string, boolean>>({});
 
     const lastHandledPayload = useRef<string | null>(null);
+    const lastHandledRouteQuery = useRef<string | null>(null);
+    const latestSearchRequestId = useRef(0);
+    const isMountedRef = useRef(true);
     const location = useLocation();
     const navigate = useNavigate();
+    const summaryAudio = useAudioPlayer();
+    const {
+        play: playAudio,
+        togglePause: toggleAudioPause,
+        stop: stopAudio,
+        isLoading: isSummaryAudioLoading,
+        isPlaying: isSummaryAudioPlaying,
+        isPaused: isSummaryAudioPaused
+    } = summaryAudio;
 
     const playSummaryAudio = useCallback((text: string) => {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-US';
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-
-        utterance.onend = () => {
-            setIsSummaryAudioPlaying(false);
-            setIsSummaryAudioPaused(false);
-        };
-
-        utterance.onerror = () => {
-            setIsSummaryAudioPlaying(false);
-            setIsSummaryAudioPaused(false);
-        };
-
-        setIsSummaryAudioPlaying(true);
-        setIsSummaryAudioPaused(false);
-        window.speechSynthesis.speak(utterance);
-    }, []);
+        playAudio(text);
+    }, [playAudio]);
 
     const speakNoArticlesMessage = useCallback((message: string) => {
-        window.speechSynthesis.cancel();
-        setIsSummaryAudioPlaying(false);
-        setIsSummaryAudioPaused(false);
-
-        const utterance = new SpeechSynthesisUtterance(message);
-        utterance.lang = 'en-US';
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-
-        window.speechSynthesis.speak(utterance);
-    }, []);
+        playAudio(message);
+    }, [playAudio]);
 
     const toggleSummaryAudioPause = useCallback(() => {
-        if (!isSummaryAudioPlaying) return;
-
-        if (isSummaryAudioPaused) {
-            window.speechSynthesis.resume();
-            setIsSummaryAudioPaused(false);
-            return;
-        }
-
-        window.speechSynthesis.pause();
-        setIsSummaryAudioPaused(true);
-    }, [isSummaryAudioPlaying, isSummaryAudioPaused]);
+        toggleAudioPause();
+    }, [toggleAudioPause]);
 
     const buildSavedMap = (savedArticles: SavedArticle[]) => {
         return savedArticles.reduce<Record<string, string>>((acc, savedArticle) => {
@@ -97,12 +77,12 @@ const Dashboard = () => {
         }, {});
     };
 
-    const handleToggleSave = async (article: Article) => {
+    const handleToggleSave = useCallback(async (article: Article) => {
         const articleUrl = article.url?.trim();
-        if (!articleUrl || saveLoadingUrl === articleUrl) return;
+        if (!articleUrl || pendingSaveByUrl[articleUrl]) return;
 
         setSaveError('');
-        setSaveLoadingUrl(articleUrl);
+        setPendingSaveByUrl((prev) => ({ ...prev, [articleUrl]: true }));
 
         try {
             const existingSavedId = savedArticleIdsByUrl[articleUrl];
@@ -141,13 +121,21 @@ const Dashboard = () => {
             setSaveError(getErrorMessage(err, 'Failed to update saved articles. Please retry.'));
             console.error(err);
         } finally {
-            setSaveLoadingUrl(null);
+            if (!isMountedRef.current) return;
+            setPendingSaveByUrl((prev) => {
+                const next = { ...prev };
+                delete next[articleUrl];
+                return next;
+            });
         }
-    };
+    }, [pendingSaveByUrl, savedArticleIdsByUrl]);
 
     const executeIntelligentSearch = useCallback(async (searchQuery: string) => {
-        setLoading(true);
-        setError('');
+        const requestId = ++latestSearchRequestId.current;
+        if (isMountedRef.current) {
+            setLoading(true);
+            setError('');
+        }
 
         try {
             const { query: trimmedQuery } = validateWithSchema(
@@ -171,6 +159,7 @@ const Dashboard = () => {
                     : NO_ARTICLES_MESSAGE;
 
                 if (data.articles.length === 0) {
+                    if (!isMountedRef.current || requestId !== latestSearchRequestId.current) return;
                     speakNoArticlesMessage(noArticlesMessage);
                     setArticles([]);
                     setQuery(topic);
@@ -183,6 +172,7 @@ const Dashboard = () => {
                     return;
                 }
 
+                if (!isMountedRef.current || requestId !== latestSearchRequestId.current) return;
                 setArticles(data.articles);
                 setQuery(topic);
                 setSummary(generatedSummary);
@@ -194,23 +184,34 @@ const Dashboard = () => {
 
                 if (generatedSummary) playSummaryAudio(generatedSummary);
             } else {
+                if (!isMountedRef.current || requestId !== latestSearchRequestId.current) return;
                 speakNoArticlesMessage(NO_ARTICLES_MESSAGE);
                 setError(NO_ARTICLES_MESSAGE);
             }
         } catch (err: unknown) {
+            if (!isMountedRef.current || requestId !== latestSearchRequestId.current) return;
             setError(getErrorMessage(err, 'Failed to fetch news. Check the console.'));
             console.error(err);
         } finally {
+            if (!isMountedRef.current || requestId !== latestSearchRequestId.current) return;
             setLoading(false);
         }
     }, [playSummaryAudio, speakNoArticlesMessage]);
 
     const handleManualSearch = (e: FormEvent) => {
         e.preventDefault();
-        executeIntelligentSearch(query);
+        const trimmed = query.trim();
+        if (!trimmed) return;
+        const currentRouteQuery = (new URLSearchParams(location.search).get('q') ?? '').trim().toLowerCase();
+        if (currentRouteQuery === trimmed.toLowerCase()) {
+            executeIntelligentSearch(trimmed);
+            return;
+        }
+        navigate(`/dashboard?q=${encodeURIComponent(trimmed)}`, { replace: true });
     };
 
     useEffect(() => {
+        isMountedRef.current = true;
         const fetchSavedArticles = async () => {
             try {
                 const response = await API.get('/saved-articles');
@@ -219,6 +220,7 @@ const Dashboard = () => {
                     response.data,
                     'Received an invalid saved article list from server.'
                 );
+                if (!isMountedRef.current) return;
                 setSavedArticleIdsByUrl(buildSavedMap(savedArticles));
             } catch (err: unknown) {
                 console.error('Failed to load saved article list', err);
@@ -226,7 +228,25 @@ const Dashboard = () => {
         };
 
         fetchSavedArticles();
+        return () => {
+            isMountedRef.current = false;
+        };
     }, []);
+
+    useEffect(() => {
+        const routeQuery = (new URLSearchParams(location.search).get('q') ?? '').trim();
+        if (!routeQuery) {
+            lastHandledRouteQuery.current = null;
+            return;
+        }
+
+        const normalizedRouteQuery = routeQuery.toLowerCase();
+        if (lastHandledRouteQuery.current === normalizedRouteQuery) return;
+
+        lastHandledRouteQuery.current = normalizedRouteQuery;
+        setQuery(routeQuery);
+        executeIntelligentSearch(routeQuery);
+    }, [location.search, executeIntelligentSearch]);
 
     useEffect(() => {
         const parsedState = dashboardLocationStateSchema.safeParse(location.state);
@@ -313,45 +333,70 @@ const Dashboard = () => {
 
     useEffect(() => {
         return () => {
-            window.speechSynthesis.cancel();
+            isMountedRef.current = false;
+            stopAudio();
         };
-    }, []);
+    }, [stopAudio]);
 
     return (
-        <div className="pt-20 px-5 pb-5 max-w-[1200px] mx-auto">
-            <SearchBar
-                query={query}
-                setQuery={setQuery}
-                onSearch={handleManualSearch}
-                loading={loading}
-                hasSummary={Boolean(summary)}
-                onSummaryClick={() => setShowSummary((prev) => !prev)}
+        <SectionContainer className="space-y-6">
+            <PageHeader
+                title="Dashboard"
+                subtitle="Search the latest briefings and listen to the summarized results."
             />
 
+            <div id="search">
+                <SearchBar
+                    query={query}
+                    setQuery={setQuery}
+                    onSearch={handleManualSearch}
+                    loading={loading}
+                    hasSummary={Boolean(summary)}
+                    onSummaryClick={() => setShowSummary((prev) => !prev)}
+                />
+            </div>
+
             {summary && showSummary && (
-                <div className="max-w-2xl mx-auto mb-6 rounded-xl border border-indigo-500/30 bg-[#0d0d12]/90 p-4">
-                    <p className="text-[11px] font-mono uppercase tracking-wider text-indigo-400 mb-2">Latest Summary</p>
-                    <p className="text-sm text-gray-200 leading-relaxed">{summary}</p>
-                    <button
-                        type="button"
-                        onClick={() => playSummaryAudio(summary)}
-                        className="mt-4 px-3 py-2 bg-[#13131a] border border-indigo-500/30 rounded-lg text-indigo-300 font-mono text-[11px] uppercase tracking-wider hover:text-white hover:border-indigo-400/50 transition-all duration-200"
-                    >
-                        Play Audio
-                    </button>
-                    <button
-                        type="button"
-                        onClick={toggleSummaryAudioPause}
-                        disabled={!isSummaryAudioPlaying}
-                        className="mt-2 ml-2 px-3 py-2 bg-[#13131a] border border-amber-500/30 rounded-lg text-amber-300 font-mono text-[11px] uppercase tracking-wider hover:text-white hover:border-amber-400/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isSummaryAudioPlaying ? (isSummaryAudioPaused ? 'Resume Audio' : 'Pause Audio') : 'Pause Audio'}
-                    </button>
-                </div>
+                <Card className="p-6" variant="elevated">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <Badge variant="primary">Latest Summary</Badge>
+                        <div className="flex flex-wrap gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => playSummaryAudio(summary)}
+                                disabled={isSummaryAudioLoading}
+                            >
+                                {isSummaryAudioLoading ? 'Loading...' : 'Play Audio'}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={toggleSummaryAudioPause}
+                                disabled={!isSummaryAudioPlaying && !isSummaryAudioPaused}
+                            >
+                                {isSummaryAudioPaused ? 'Resume Audio' : 'Pause Audio'}
+                            </Button>
+                        </div>
+                    </div>
+                    <p className="mt-4 text-[15px] text-text leading-relaxed max-w-prose">
+                        {summary}
+                    </p>
+                </Card>
             )}
 
-            {error && <p className="text-red-500 font-bold mb-5 text-center">{error}</p>}
-            {saveError && <p className="text-orange-400 font-bold mb-5">{saveError}</p>}
+            {error && (
+                <div className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-[15px] text-danger">
+                    {error}
+                </div>
+            )}
+            {saveError && (
+                <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-[15px] text-warning">
+                    {saveError}
+                </div>
+            )}
 
             {loading ? (
                 <Loader />
@@ -363,12 +408,12 @@ const Dashboard = () => {
                             article={article}
                             isSaved={Boolean(savedArticleIdsByUrl[article.url])}
                             onToggleSave={handleToggleSave}
-                            saveDisabled={saveLoadingUrl === article.url}
+                            saveDisabled={Boolean(article.url && pendingSaveByUrl[article.url])}
                         />
                     ))}
                 </div>
             )}
-        </div>
+        </SectionContainer>
     );
 };
 

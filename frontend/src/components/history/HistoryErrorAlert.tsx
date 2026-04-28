@@ -4,8 +4,8 @@ interface HistoryErrorAlertProps {
 
 const HistoryErrorAlert = ({ message }: HistoryErrorAlertProps) => {
     return (
-        <div className="p-4 mb-4 bg-red-950/20 border border-red-900/50 rounded-lg text-red-400 text-sm font-mono flex items-center gap-3">
-            <span className="w-2 h-2 rounded-full bg-red-500"></span>
+        <div className="mb-4 flex items-start gap-3 rounded-lg border border-danger/30 bg-danger/10 p-4 text-[15px] text-danger">
+            <span className="mt-1 h-2 w-2 rounded-full bg-danger"></span>
             <p>{message}</p>
         </div>
     );

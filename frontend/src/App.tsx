@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import Navbar from './components/Navbar';
+import AppShell from './components/AppShell';
 import VoiceAssistant from './components/VoiceAssistant';
 
 import Home from './pages/Home';
@@ -13,39 +13,39 @@ import SavedArticles from './pages/SavedArticles';
 function App() {
   return (
     <Router>
-      <Navbar />
-      <VoiceAssistant />
+      <AppShell>
+        <VoiceAssistant />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/history" 
-          element={
-            <ProtectedRoute>
-              <History />
-            </ProtectedRoute>
-          } 
-        />
-        <Route
-          path="/saved"
-          element={
-            <ProtectedRoute>
-              <SavedArticles />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/history" 
+            element={
+              <ProtectedRoute>
+                <History />
+              </ProtectedRoute>
+            } 
+          />
+          <Route
+            path="/saved"
+            element={
+              <ProtectedRoute>
+                <SavedArticles />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </AppShell>
     </Router>
   );
 }

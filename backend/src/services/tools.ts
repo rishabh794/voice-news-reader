@@ -4,7 +4,7 @@ export async function searchGNews(query: string) {
     try {
         const apiKey = process.env.GNEWS_API_KEY;
         const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&apikey=${apiKey}&max=9`;
-        const response = await axios.get(url);
+        const response = await axios.get(url, { timeout: 12000 });
 
         const articles = response.data.articles;
 

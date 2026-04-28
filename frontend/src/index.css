@@ -1,5 +1,34 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Bebas+Neue&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist+Sans:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --color-base: #0B0D12;
+  --color-surface: #11141B;
+  --color-card: #151922;
+  --color-elevated: #1A1F2B;
+  --color-border: #232833;
+  --color-border-strong: #2E3645;
+  --color-text: #F5F7FA;
+  --color-muted: #A7B0C0;
+  --color-subtle: #6B7280;
+  --color-primary: #3B82F6;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --font-sans: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Geist Sans", "Inter", "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #232833 #0B0D12;
+}
 
 html {
   scroll-behavior: smooth;
@@ -9,130 +38,37 @@ html {
 }
 
 body {
-  @apply bg-[#020617] text-slate-200 antialiased;
-  font-family: 'IBM Plex Mono', monospace;
+  @apply bg-base text-text font-sans antialiased;
+  line-height: 1.6;
   overflow-x: hidden;
-}
-
-h1, h2, h3 {
-  font-family: 'Bebas Neue', sans-serif;
-  letter-spacing: 0.02em;
-}
-
-.grid-bg {
   background-image:
-    linear-gradient(rgba(34, 211, 238, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(34, 211, 238, 0.035) 1px, transparent 1px);
-  background-size: 48px 48px;
+    radial-gradient(1000px 600px at 10% -10%, rgba(59, 130, 246, 0.12), transparent 60%),
+    radial-gradient(800px 420px at 90% 0%, rgba(16, 185, 129, 0.08), transparent 55%);
 }
 
-.mic-ring {
-  border-radius: 50%;
-  border: 1.5px solid rgba(34, 211, 238, 0.18);
-  animation: ripple 2.8s ease-out infinite;
+h1, h2, h3, h4 {
+  @apply font-display text-text;
+  letter-spacing: -0.02em;
 }
 
-.mic-ring-2 {
-  animation-delay: 0.9s;
-}
-
-.mic-ring-3 {
-  animation-delay: 1.8s;
-}
-
-@keyframes ripple {
-  0% { transform: scale(1); opacity: 0.5; }
-  100% { transform: scale(2.2); opacity: 0; }
-}
-
-.pulse-glow {
-  animation: pulseGlow 1.4s ease-in-out infinite alternate;
-}
-
-@keyframes pulseGlow {
-  from { box-shadow: 0 0 20px 4px rgba(34,211,238,0.18); }
-  to { box-shadow: 0 0 48px 16px rgba(34,211,238,0.28); }
-}
-
-.processing-spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.blink {
-  animation: blink 1.1s step-end infinite;
-}
-
-@keyframes blink {
-  50% { opacity: 0; }
-}
-
-.pipeline-line {
-  background: linear-gradient(
-    90deg,
-    rgba(34,211,238,0) 0%,
-    rgba(34,211,238,0.55) 50%,
-    rgba(34,211,238,0) 100%
-  );
-  background-size: 200% 100%;
-  animation: flowLine 2s linear infinite;
-}
-
-@keyframes flowLine {
-  from { background-position: -100% 0; }
-  to { background-position: 100% 0; }
-}
-
-.cmd-card:hover {
-  border-color: rgba(34, 211, 238, 0.4) !important;
-  background: rgba(34, 211, 238, 0.04) !important;
-}
-
-.tech-pill:hover {
-  transform: translateY(-2px);
-  transition: transform 0.2s ease;
-}
-
-.fade-in {
-  animation: fadeIn 0.7s ease forwards;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.scanner-bar {
-  animation: scan 3s linear infinite;
-  background: linear-gradient(transparent, rgba(34,211,238,0.12), transparent);
-}
-
-@keyframes scan {
-  0% { top: 0%; }
-  100% { top: 100%; }
+::selection {
+  background: rgba(59, 130, 246, 0.35);
+  color: #F5F7FA;
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #020617;
+  background: #0B0D12;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #22d3ee, #6366f1);
+  background: #232833;
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #06b6d4, #4f46e5);
-}
-
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #22d3ee #020617;
+  background: #2E3645;
 }

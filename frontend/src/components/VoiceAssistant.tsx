@@ -1,5 +1,5 @@
-import { useState, useRef, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useRef, useContext, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/auth-context';
 import API from '../services/api';
 import { intentSchemas, transcribeSchemas, validateWithSchema } from '../validation';
@@ -10,15 +10,34 @@ const VoiceAssistant = () => {
     
     const mediaRecorder = useRef<MediaRecorder | null>(null);
     const audioChunks = useRef<Blob[]>([]);
+    const activeStream = useRef<MediaStream | null>(null);
+    const isMountedRef = useRef(true);
     
     const authContext = useContext(AuthContext);
     const navigate = useNavigate();
+    const location = useLocation();
 
-    if (!authContext?.isAuthenticated) return null;
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+            if (mediaRecorder.current && mediaRecorder.current.state !== 'inactive') {
+                mediaRecorder.current.stop();
+            }
+            activeStream.current?.getTracks().forEach((track) => track.stop());
+            activeStream.current = null;
+        };
+    }, []);
+
+    if (!authContext?.isAuthenticated || location.pathname === '/login' || location.pathname === '/register') {
+        return null;
+    }
 
     const startRecording = async () => {
+        if (isRecording || isProcessing || mediaRecorder.current?.state === 'recording') return;
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            activeStream.current = stream;
             
             mediaRecorder.current = new MediaRecorder(stream);
             audioChunks.current = [];
@@ -28,9 +47,11 @@ const VoiceAssistant = () => {
             };
 
             mediaRecorder.current.onstop = async () => {
+                if (!isMountedRef.current) return;
                 setIsProcessing(true);
                 const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
                 stream.getTracks().forEach(track => track.stop());
+                activeStream.current = null;
                 
                 const formData = new FormData();
                 formData.append('audio', audioBlob, 'recording.webm');
@@ -48,6 +69,7 @@ const VoiceAssistant = () => {
 
                     const spokenText = transcribedPayload.text.toLowerCase().trim();
                     if (!spokenText) return;
+                    if (!isMountedRef.current) return;
 
                     if (spokenText.includes('history')) {
                         navigate('/history');
@@ -88,12 +110,15 @@ const VoiceAssistant = () => {
                 } catch (error) {
                     console.error("AI Pipeline failed:", error);
                 } finally {
+                    if (!isMountedRef.current) return;
                     setIsProcessing(false);
                 }
             };
 
             mediaRecorder.current.start();
-            setIsRecording(true);
+            if (isMountedRef.current) {
+                setIsRecording(true);
+            }
         } catch (error) {
             console.error("Microphone access denied or failed:", error);
         }
@@ -102,61 +127,46 @@ const VoiceAssistant = () => {
     const stopRecording = () => {
         if (mediaRecorder.current && isRecording) {
             mediaRecorder.current.stop();
-            setIsRecording(false);
+            if (isMountedRef.current) {
+                setIsRecording(false);
+            }
         }
     };
 
     return (
-        <div className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-4">
-            
-            {/* System Processing Tooltip */}
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
             {isProcessing && (
-                <div className="flex items-center gap-3 bg-[#13131a]/95 backdrop-blur-md border border-indigo-500/40 px-4 py-2.5 rounded-lg shadow-[0_0_15px_rgba(99,102,241,0.15)] font-mono">
-                    <span className="w-2 h-2 bg-indigo-400 rounded-full animate-ping"></span>
-                    <span className="text-indigo-400 text-xs font-medium uppercase tracking-widest">
-                        Analyzing Intent_
-                    </span>
+                <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-elevated px-3 py-2 text-xs text-muted shadow-[0_8px_20px_rgba(0,0,0,0.2)]">
+                    <span className="h-2 w-2 rounded-full bg-primary animate-pulse"></span>
+                    Analyzing intent
                 </div>
             )}
-            
-            {/* Main Action Button */}
+
             <button
                 onMouseDown={startRecording}
                 onMouseUp={stopRecording}
-                onMouseLeave={stopRecording} 
-                onTouchStart={startRecording} 
+                onMouseLeave={stopRecording}
+                onTouchStart={startRecording}
                 onTouchEnd={stopRecording}
-                className={`relative group flex items-center justify-center w-16 h-16 rounded-full outline-none transition-all duration-300 select-none ${
-                    isRecording 
-                        ? 'bg-[#0d0d12] border-2 border-cyan-400 scale-110 shadow-[0_0_25px_rgba(6,182,212,0.4)]' 
-                        : isProcessing 
-                        ? 'bg-[#13131a] border border-indigo-500/50 cursor-wait shadow-[0_0_15px_rgba(99,102,241,0.2)]' 
-                        : 'bg-[#13131a] border border-gray-700 hover:border-cyan-500/50 hover:bg-[#16161f] hover:scale-105 shadow-lg'
-                }`}
+                aria-label="Press and hold to talk"
+                className={[
+                    'relative flex h-14 w-14 items-center justify-center rounded-full border transition-all duration-150',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-base',
+                    isRecording
+                        ? 'border-primary bg-primary/10 text-primary scale-105'
+                        : isProcessing
+                        ? 'border-border-strong bg-elevated text-muted cursor-wait'
+                        : 'border-border/70 bg-surface text-muted hover:border-border-strong hover:text-text'
+                ].join(' ')}
             >
-                {/* Active Recording Pulse Ring */}
-                {isRecording && (
-                    <div className="absolute inset-0 rounded-full border border-cyan-400 animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite] opacity-40"></div>
-                )}
-
-                {/* Dynamic Icon States */}
                 {isProcessing ? (
-                    // Spinner Icon
-                    <svg className="w-6 h-6 text-indigo-400 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                        <path className="opacity-80" d="M4 12a8 8 0 0 1 8-8" stroke="currentColor" strokeWidth="3" />
                     </svg>
-                ) : isRecording ? (
-                    // Listening Audio Waves
-                    <div className="flex items-center gap-1">
-                        <span className="w-1 h-4 bg-cyan-400 rounded-full animate-[bounce_1s_infinite_0.1s]"></span>
-                        <span className="w-1 h-6 bg-cyan-400 rounded-full animate-[bounce_1s_infinite_0.2s]"></span>
-                        <span className="w-1 h-4 bg-cyan-400 rounded-full animate-[bounce_1s_infinite_0.3s]"></span>
-                    </div>
                 ) : (
-                    // Default Mic Icon
-                    <svg className="w-6 h-6 text-gray-400 group-hover:text-cyan-400 transition-colors duration-300" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                    <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3z" />
                     </svg>
                 )}
             </button>

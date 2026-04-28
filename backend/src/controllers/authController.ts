@@ -14,6 +14,12 @@ const isGoogleOnlyAccount = (user: any): boolean => {
     return !hasPassword && !hasLocalProvider;
 };
 
+const isDuplicateKeyError = (error: unknown): boolean =>
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: number }).code === 11000;
+
 // REGISTER CONTROLLER
 export const register = async (req: Request, res: Response): Promise<any> => {
     try {
@@ -50,6 +56,9 @@ export const register = async (req: Request, res: Response): Promise<any> => {
         res.status(201).json({ message: 'User created successfully' });
     } catch (error) {
         console.error('Registration Error:', error);
+        if (isDuplicateKeyError(error)) {
+            return res.status(409).json({ error: 'User already exists' });
+        }
         res.status(500).json({ error: 'Server error during registration' });
     }
 };
@@ -133,6 +142,10 @@ export const googleAuth = async (req: Request, res: Response): Promise<any> => {
         return res.json({ token, email: user.email, authProvider: 'google' });
     } catch (error) {
         console.error('Google Auth Error:', error);
+
+        if (isDuplicateKeyError(error)) {
+            return res.status(409).json({ error: 'Account already exists. Please continue with Google sign-in.' });
+        }
 
         if (error instanceof Error && error.message.includes('not configured')) {
             return res.status(500).json({ error: error.message });
