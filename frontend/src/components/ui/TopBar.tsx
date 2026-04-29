@@ -2,6 +2,7 @@ import { useContext, useEffect, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/auth-context';
 import { useToast } from '../../hooks/useToast';
+import { useTheme } from '../../hooks/useTheme';
 import Button from './Button';
 import SidebarToggle from './sidebar-toggle';
 
@@ -22,6 +23,9 @@ const TopBar = ({
     const navigate = useNavigate();
     const location = useLocation();
     const { showToast } = useToast();
+    const { theme, toggleTheme } = useTheme();
+    const isDark = theme === 'dark';
+    const themeToggleLabel = isDark ? 'Switch to light mode' : 'Switch to dark mode';
 
     useEffect(() => {
         const currentQuery = new URLSearchParams(location.search).get('q') ?? '';
@@ -102,6 +106,49 @@ const TopBar = ({
                 </div>
 
                 <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={toggleTheme}
+                        aria-label={themeToggleLabel}
+                        title={themeToggleLabel}
+                        className="group inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-surface/80 text-muted transition-colors duration-150 hover:bg-elevated hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                    >
+                        {isDark ? (
+                            <svg
+                                className="h-4 w-4 transition-transform duration-150 group-hover:rotate-12"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.6"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden="true"
+                            >
+                                <circle cx="12" cy="12" r="4" />
+                                <path d="M12 2v2" />
+                                <path d="M12 20v2" />
+                                <path d="M4.93 4.93l1.41 1.41" />
+                                <path d="M17.66 17.66l1.41 1.41" />
+                                <path d="M2 12h2" />
+                                <path d="M20 12h2" />
+                                <path d="M4.93 19.07l1.41-1.41" />
+                                <path d="M17.66 6.34l1.41-1.41" />
+                            </svg>
+                        ) : (
+                            <svg
+                                className="h-4 w-4 transition-transform duration-150 group-hover:-rotate-12"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.6"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden="true"
+                            >
+                                <path d="M21 12.8A9 9 0 0 1 11.2 3a7 7 0 1 0 9.8 9.8z" />
+                            </svg>
+                        )}
+                    </button>
                     {isAuthenticated ? (
                         <>
                             <div className="hidden md:flex flex-col text-right">
@@ -115,7 +162,7 @@ const TopBar = ({
                                 variant="ghost"
                                 size="sm"
                                 onClick={handleLogout}
-                                className="border border-danger/30 text-danger hover:border-danger/60 hover:bg-danger/15 hover:text-red-300"
+                                className="border border-danger/30 text-danger hover:border-danger/60 hover:bg-danger/15 hover:text-danger dark:hover:text-red-300"
                             >
                                 Logout
                             </Button>

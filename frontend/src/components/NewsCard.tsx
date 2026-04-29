@@ -27,8 +27,8 @@ const NewsCard = ({ article, isSaved = false, onToggleSave, saveDisabled = false
                     className={[
                         'absolute right-4 top-4 z-10 rounded-full px-3 text-[11px] font-mono uppercase tracking-wider',
                         isSaved
-                            ? 'border-primary/50 text-primary bg-primary/12 hover:border-primary/70 hover:bg-primary/20'
-                            : 'bg-base/70 text-muted hover:text-text hover:border-border-strong'
+                            ? 'border-primary/60 text-primary bg-primary/15 shadow-sm hover:border-primary/70 hover:bg-primary/20'
+                            : 'border border-border/60 bg-surface/85 text-text/85 shadow-sm backdrop-blur-sm hover:bg-surface/95 hover:text-text hover:border-border-strong'
                     ].join(' ')}
                 >
                     {saveDisabled ? 'Saving...' : isSaved ? 'Saved' : 'Save'}
@@ -40,9 +40,9 @@ const NewsCard = ({ article, isSaved = false, onToggleSave, saveDisabled = false
                     <img
                         src={article.image}
                         alt="News thumbnail"
-                        className="h-[170px] w-full object-cover opacity-80 transition-opacity duration-150 group-hover:opacity-100"
+                        className="h-[170px] w-full object-cover opacity-87 dark:opacity-100"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-base via-transparent to-transparent"></div>
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-base/60 via-base/0 to-transparent dark:h-16 dark:from-base/45"></div>
                 </div>
             )}
 

@@ -8,7 +8,7 @@ const variantClasses: Record<ButtonVariant, string> = {
     secondary: 'bg-elevated text-text border border-border/70 hover:border-border-strong hover:bg-card/70',
     outline: 'bg-transparent text-text border border-border/70 hover:border-border-strong hover:bg-surface/60',
     ghost: 'bg-transparent text-muted hover:text-text hover:bg-surface/60',
-    danger: 'bg-danger/10 text-danger border border-danger/35 hover:bg-danger/18 hover:text-red-300 hover:border-danger/60'
+    danger: 'bg-danger/10 text-danger border border-danger/35 hover:bg-danger/18 hover:text-danger dark:hover:text-red-300 hover:border-danger/60'
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

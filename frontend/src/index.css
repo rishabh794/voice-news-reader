@@ -1,7 +1,40 @@
 @import url('https://fonts.googleapis.com/css2?family=Geist+Sans:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
+  --color-base: #F5F7FB;
+  --color-surface: #FFFFFF;
+  --color-card: #EEF2F7;
+  --color-elevated: #E6ECF4;
+  --color-border: #D7DEE9;
+  --color-border-strong: #C0CBD9;
+  --color-text: #0F172A;
+  --color-muted: #475569;
+  --color-subtle: #6B7280;
+  --color-primary: #3B82F6;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --font-sans: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Geist Sans", "Inter", "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+:root {
+  color-scheme: light;
+  --page-gradient-1: radial-gradient(1000px 600px at 10% -10%, rgba(59, 130, 246, 0.08), transparent 60%);
+  --page-gradient-2: radial-gradient(800px 420px at 90% 0%, rgba(16, 185, 129, 0.06), transparent 55%);
+  --scrollbar-track: #E6ECF4;
+  --scrollbar-thumb: #C0CBD9;
+  --scrollbar-thumb-hover: #AEB8C9;
+  --selection-bg: rgba(59, 130, 246, 0.2);
+  --selection-text: #0F172A;
+}
+
+:root.dark {
+  color-scheme: dark;
   --color-base: #0B0D12;
   --color-surface: #11141B;
   --color-card: #151922;
@@ -15,19 +48,19 @@
   --color-success: #10B981;
   --color-warning: #F59E0B;
   --color-danger: #EF4444;
-  --font-sans: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Geist Sans", "Inter", "Segoe UI", sans-serif;
-  --font-mono: "Geist Mono", "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-}
-
-:root {
-  color-scheme: dark;
+  --page-gradient-1: radial-gradient(1000px 600px at 10% -10%, rgba(59, 130, 246, 0.12), transparent 60%);
+  --page-gradient-2: radial-gradient(800px 420px at 90% 0%, rgba(16, 185, 129, 0.08), transparent 55%);
+  --scrollbar-track: #0B0D12;
+  --scrollbar-thumb: #232833;
+  --scrollbar-thumb-hover: #2E3645;
+  --selection-bg: rgba(59, 130, 246, 0.35);
+  --selection-text: #F5F7FA;
 }
 
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
-  scrollbar-color: #232833 #0B0D12;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 html {
@@ -41,9 +74,14 @@ body {
   @apply bg-base text-text font-sans antialiased;
   line-height: 1.6;
   overflow-x: hidden;
-  background-image:
-    radial-gradient(1000px 600px at 10% -10%, rgba(59, 130, 246, 0.12), transparent 60%),
-    radial-gradient(800px 420px at 90% 0%, rgba(16, 185, 129, 0.08), transparent 55%);
+  background-image: var(--page-gradient-1), var(--page-gradient-2);
+}
+
+:root.theme-transition,
+:root.theme-transition * {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
 }
 
 h1, h2, h3, h4 {
@@ -52,8 +90,8 @@ h1, h2, h3, h4 {
 }
 
 ::selection {
-  background: rgba(59, 130, 246, 0.35);
-  color: #F5F7FA;
+  background: var(--selection-bg);
+  color: var(--selection-text);
 }
 
 ::-webkit-scrollbar {
@@ -61,14 +99,14 @@ h1, h2, h3, h4 {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B0D12;
+  background: var(--scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #232833;
+  background: var(--scrollbar-thumb);
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #2E3645;
+  background: var(--scrollbar-thumb-hover);
 }
