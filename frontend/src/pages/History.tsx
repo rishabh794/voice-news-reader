@@ -126,8 +126,9 @@ const History = () => {
                 setError(getErrorMessage(err, 'Failed to load history.'));
                 console.error(err);
             } finally {
-                if (!isMountedRef.current) return;
-                setLoading(false);
+                if (isMountedRef.current) {
+                    setLoading(false);
+                }
             }
         };
 
@@ -226,8 +227,9 @@ const History = () => {
             setError(getErrorMessage(err, 'Failed to refresh briefing.'));
             console.error(err);
         } finally {
-            if (!isMountedRef.current) return;
-            setRefreshingId(null);
+            if (isMountedRef.current) {
+                setRefreshingId(null);
+            }
         }
     };
 
@@ -274,12 +276,13 @@ const History = () => {
             setError('Failed to delete history entry. Please retry.');
             console.error(err);
         } finally {
-            if (!isMountedRef.current) return;
-            setDeletingIds((prev) => {
-                const next = { ...prev };
-                delete next[entryId];
-                return next;
-            });
+            if (isMountedRef.current) {
+                setDeletingIds((prev) => {
+                    const next = { ...prev };
+                    delete next[entryId];
+                    return next;
+                });
+            }
         }
     };
 
@@ -310,8 +313,9 @@ const History = () => {
             setError(getErrorMessage(err, 'Failed to clear history. Please retry.'));
             console.error(err);
         } finally {
-            if (!isMountedRef.current) return;
-            setIsClearingAll(false);
+            if (isMountedRef.current) {
+                setIsClearingAll(false);
+            }
         }
     };
 

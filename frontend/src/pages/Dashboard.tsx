@@ -121,12 +121,13 @@ const Dashboard = () => {
             setSaveError(getErrorMessage(err, 'Failed to update saved articles. Please retry.'));
             console.error(err);
         } finally {
-            if (!isMountedRef.current) return;
-            setPendingSaveByUrl((prev) => {
-                const next = { ...prev };
-                delete next[articleUrl];
-                return next;
-            });
+            if (isMountedRef.current) {
+                setPendingSaveByUrl((prev) => {
+                    const next = { ...prev };
+                    delete next[articleUrl];
+                    return next;
+                });
+            }
         }
     }, [pendingSaveByUrl, savedArticleIdsByUrl]);
 
@@ -193,8 +194,9 @@ const Dashboard = () => {
             setError(getErrorMessage(err, 'Failed to fetch news. Check the console.'));
             console.error(err);
         } finally {
-            if (!isMountedRef.current || requestId !== latestSearchRequestId.current) return;
-            setLoading(false);
+            if (isMountedRef.current && requestId === latestSearchRequestId.current) {
+                setLoading(false);
+            }
         }
     }, [playSummaryAudio, speakNoArticlesMessage]);
 

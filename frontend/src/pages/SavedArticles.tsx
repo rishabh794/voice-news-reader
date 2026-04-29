@@ -32,8 +32,9 @@ const SavedArticles = () => {
                 setError(getErrorMessage(err, 'Failed to load saved articles.'));
                 console.error(err);
             } finally {
-                if (!isMountedRef.current) return;
-                setLoading(false);
+                if (isMountedRef.current) {
+                    setLoading(false);
+                }
             }
         };
 
@@ -60,12 +61,13 @@ const SavedArticles = () => {
             setError(getErrorMessage(err, 'Failed to remove article from saved list.'));
             console.error(err);
         } finally {
-            if (!isMountedRef.current) return;
-            setPendingByUrl((prev) => {
-                const next = { ...prev };
-                delete next[currentUrl];
-                return next;
-            });
+            if (isMountedRef.current) {
+                setPendingByUrl((prev) => {
+                    const next = { ...prev };
+                    delete next[currentUrl];
+                    return next;
+                });
+            }
         }
     };
 

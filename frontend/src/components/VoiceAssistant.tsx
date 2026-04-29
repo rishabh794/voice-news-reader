@@ -110,8 +110,9 @@ const VoiceAssistant = () => {
                 } catch (error) {
                     console.error("AI Pipeline failed:", error);
                 } finally {
-                    if (!isMountedRef.current) return;
-                    setIsProcessing(false);
+                    if (isMountedRef.current) {
+                        setIsProcessing(false);
+                    }
                 }
             };
 
