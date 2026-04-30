@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
-import API from '../services/api';
+import { deleteSavedArticle, fetchSavedArticles, requestIntent, saveArticle } from '../services/api';
 import useAudioPlayer from '../hooks/useAudioPlayer';
 
 import SearchBar from '../components/ui/SearchBar';
@@ -29,6 +30,8 @@ const dashboardLocationStateSchema = z.object({
     query: z.string().optional()
 });
 
+const EMPTY_SAVED_ARTICLES: SavedArticle[] = [];
+
 const Dashboard = () => {
     const [query, setQuery] = useState('');
     const [summary, setSummary] = useState('');
@@ -37,7 +40,6 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [saveError, setSaveError] = useState('');
-    const [savedArticleIdsByUrl, setSavedArticleIdsByUrl] = useState<Record<string, string>>({});
     const [pendingSaveByUrl, setPendingSaveByUrl] = useState<Record<string, boolean>>({});
 
     const lastHandledPayload = useRef<string | null>(null);
@@ -68,7 +70,35 @@ const Dashboard = () => {
         toggleAudioPause();
     }, [toggleAudioPause]);
 
-    const buildSavedMap = (savedArticles: SavedArticle[]) => {
+    const restoreDashboardFromSession = useCallback((expectedQuery?: string): boolean => {
+        const savedQuery = sessionStorage.getItem('dashboard_query');
+        const savedArticles = sessionStorage.getItem('dashboard_articles');
+        const savedSummary = sessionStorage.getItem('dashboard_summary') || '';
+
+        if (!savedQuery || !savedArticles) return false;
+        if (expectedQuery && savedQuery.trim().toLowerCase() !== expectedQuery.trim().toLowerCase()) {
+            return false;
+        }
+
+        try {
+            const parsedCachedArticles = validateWithSchema(
+                newsSchemas.articleListSchema,
+                JSON.parse(savedArticles),
+                'Stored dashboard articles are invalid.'
+            );
+            setQuery(savedQuery);
+            setArticles(parsedCachedArticles);
+            setSummary(savedSummary);
+            setShowSummary(Boolean(savedSummary));
+            setError('');
+            return true;
+        } catch (parseError) {
+            console.error('Failed to parse dashboard cache', parseError);
+            return false;
+        }
+    }, []);
+
+    const buildSavedMap = (savedArticles: SavedArticle[]) => { //key   = article URL ,value = saved article database ID
         return savedArticles.reduce<Record<string, string>>((acc, savedArticle) => {
             if (savedArticle.url && savedArticle._id) {
                 acc[savedArticle.url] = savedArticle._id;
@@ -76,6 +106,35 @@ const Dashboard = () => {
             return acc;
         }, {});
     };
+
+    const queryClient = useQueryClient(); // Access TanStack Query cache to update saved articles after mutations
+    const savedArticlesQuery = useQuery<SavedArticle[]>({
+        queryKey: ['saved-articles'],
+        queryFn: fetchSavedArticles
+    });
+    const savedArticles = savedArticlesQuery.data ?? EMPTY_SAVED_ARTICLES;
+    const savedArticleIdsByUrl = useMemo(() => buildSavedMap(savedArticles), [savedArticles]);
+
+    const saveArticleMutation = useMutation({
+        mutationFn: saveArticle,
+        onSuccess: (savedArticle) => {
+            queryClient.setQueryData<SavedArticle[]>(['saved-articles'], (prev = []) => {
+                if (prev.some((item) => item._id === savedArticle._id)) {
+                    return prev;
+                }
+                return [...prev, savedArticle];
+            });
+        }
+    });
+
+    const deleteSavedArticleMutation = useMutation({
+        mutationFn: deleteSavedArticle,
+        onSuccess: (_, savedId) => {
+            queryClient.setQueryData<SavedArticle[]>(['saved-articles'], (prev = []) =>
+                prev.filter((item) => item._id !== savedId)
+            );
+        }
+    });
 
     const handleToggleSave = useCallback(async (article: Article) => {
         const articleUrl = article.url?.trim();
@@ -88,35 +147,11 @@ const Dashboard = () => {
             const existingSavedId = savedArticleIdsByUrl[articleUrl];
 
             if (existingSavedId) {
-                await API.delete(`/saved-articles/${existingSavedId}`);
-                setSavedArticleIdsByUrl((prev) => {
-                    const next = { ...prev };
-                    delete next[articleUrl];
-                    return next;
-                });
+                await deleteSavedArticleMutation.mutateAsync(existingSavedId);
                 return;
             }
 
-            const response = await API.post('/saved-articles', {
-                title: article.title,
-                description: article.description || '',
-                url: articleUrl,
-                image: article.image || '',
-                publishedAt: article.publishedAt,
-                sourceName: article.source?.name || article.sourceName || ''
-            });
-
-            const savedArticle = validateWithSchema(
-                newsSchemas.savedArticleSchema,
-                response.data,
-                'Received an invalid saved article response.'
-            );
-            if (savedArticle?._id && savedArticle.url) {
-                setSavedArticleIdsByUrl((prev) => ({
-                    ...prev,
-                    [savedArticle.url]: savedArticle._id
-                }));
-            }
+            await saveArticleMutation.mutateAsync(article);
         } catch (err: unknown) {
             setSaveError(getErrorMessage(err, 'Failed to update saved articles. Please retry.'));
             console.error(err);
@@ -129,28 +164,18 @@ const Dashboard = () => {
                 });
             }
         }
-    }, [pendingSaveByUrl, savedArticleIdsByUrl]);
+    }, [pendingSaveByUrl, savedArticleIdsByUrl, deleteSavedArticleMutation, saveArticleMutation]);
 
     const executeIntelligentSearch = useCallback(async (searchQuery: string) => {
         const requestId = ++latestSearchRequestId.current;
         if (isMountedRef.current) {
+            stopAudio();
             setLoading(true);
             setError('');
         }
 
         try {
-            const { query: trimmedQuery } = validateWithSchema(
-                intentSchemas.intentRequestSchema,
-                { query: searchQuery },
-                'Please enter a search query.'
-            );
-
-            const response = await API.post('/intent', { query: trimmedQuery });
-            const data = validateWithSchema(
-                intentSchemas.intentResponseSchema,
-                response.data,
-                'Received an invalid intent response from server.'
-            );
+            const data = await requestIntent(searchQuery, 'Please enter a search query.');
 
             if (data.action === 'search') {
                 const topic = data.topic;
@@ -198,7 +223,7 @@ const Dashboard = () => {
                 setLoading(false);
             }
         }
-    }, [playSummaryAudio, speakNoArticlesMessage]);
+    }, [playSummaryAudio, speakNoArticlesMessage, stopAudio]);
 
     const handleManualSearch = (e: FormEvent) => {
         e.preventDefault();
@@ -213,29 +238,6 @@ const Dashboard = () => {
     };
 
     useEffect(() => {
-        isMountedRef.current = true;
-        const fetchSavedArticles = async () => {
-            try {
-                const response = await API.get('/saved-articles');
-                const savedArticles = validateWithSchema(
-                    newsSchemas.savedArticleListSchema,
-                    response.data,
-                    'Received an invalid saved article list from server.'
-                );
-                if (!isMountedRef.current) return;
-                setSavedArticleIdsByUrl(buildSavedMap(savedArticles));
-            } catch (err: unknown) {
-                console.error('Failed to load saved article list', err);
-            }
-        };
-
-        fetchSavedArticles();
-        return () => {
-            isMountedRef.current = false;
-        };
-    }, []);
-
-    useEffect(() => {
         const routeQuery = (new URLSearchParams(location.search).get('q') ?? '').trim();
         if (!routeQuery) {
             lastHandledRouteQuery.current = null;
@@ -246,15 +248,21 @@ const Dashboard = () => {
         if (lastHandledRouteQuery.current === normalizedRouteQuery) return;
 
         lastHandledRouteQuery.current = normalizedRouteQuery;
+        if (restoreDashboardFromSession(routeQuery)) {
+            lastHandledPayload.current = `cache:${routeQuery}`;
+            return;
+        }
+
         setQuery(routeQuery);
         executeIntelligentSearch(routeQuery);
-    }, [location.search, executeIntelligentSearch]);
+    }, [location.search, executeIntelligentSearch, restoreDashboardFromSession]);
 
     useEffect(() => {
         const parsedState = dashboardLocationStateSchema.safeParse(location.state);
         const state = parsedState.success ? (parsedState.data as DashboardLocationState) : null;
         const agentPayload = state?.agentPayload;
         const historyQuery = state?.query;
+        const routeQuery = (new URLSearchParams(location.search).get('q') ?? '').trim();
 
         // SCENARIO 1: Came from Voice Command / History Refresh (Pre-fetched data)
         if (agentPayload?.topic) {
@@ -309,31 +317,18 @@ const Dashboard = () => {
             navigate(location.pathname, { replace: true, state: {} });
         }
         // SCENARIO 3: Normal Page Load (Restore from Session)
-        else if (!lastHandledPayload.current) {
-            const savedQuery = sessionStorage.getItem('dashboard_query');
-            const savedArticles = sessionStorage.getItem('dashboard_articles');
-            const savedSummary = sessionStorage.getItem('dashboard_summary') || '';
-
-            if (savedQuery && savedArticles) {
-                try {
-                    setQuery(savedQuery);
-                    const parsedCachedArticles = validateWithSchema(
-                        newsSchemas.articleListSchema,
-                        JSON.parse(savedArticles),
-                        'Stored dashboard articles are invalid.'
-                    );
-                    setArticles(parsedCachedArticles);
-                    setSummary(savedSummary);
-                    setShowSummary(Boolean(savedSummary));
+        else if (!lastHandledPayload.current && !routeQuery) {
+            if (restoreDashboardFromSession()) {
+                const savedQuery = sessionStorage.getItem('dashboard_query');
+                if (savedQuery) {
                     lastHandledPayload.current = `cache:${savedQuery}`;
-                } catch (parseError) {
-                    console.error('Failed to parse dashboard cache', parseError);
                 }
             }
         }
-    }, [location.state, navigate, location.pathname, executeIntelligentSearch, playSummaryAudio, speakNoArticlesMessage]);
+    }, [location.state, location.search, navigate, location.pathname, executeIntelligentSearch, playSummaryAudio, speakNoArticlesMessage, restoreDashboardFromSession]);
 
     useEffect(() => {
+        isMountedRef.current = true;
         return () => {
             isMountedRef.current = false;
             stopAudio();
@@ -358,7 +353,7 @@ const Dashboard = () => {
                 />
             </div>
 
-            {summary && showSummary && (
+            {!loading && summary && showSummary && (
                 <Card className="p-6" variant="elevated">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <Badge variant="primary">Latest Summary</Badge>

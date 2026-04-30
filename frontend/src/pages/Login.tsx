@@ -6,7 +6,7 @@ import GoogleAuthButton from '../components/GoogleAuthButton';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
-import { loginWithPassword, type AuthResponse } from '../services/auth';
+import { loginWithPassword, type AuthResponse } from '../services/api';
 import { getErrorMessage } from '../validation';
 
 const EyeIcon = () => (

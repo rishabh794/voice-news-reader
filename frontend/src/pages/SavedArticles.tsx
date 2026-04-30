@@ -1,48 +1,32 @@
-import { useEffect, useRef, useState } from 'react';
-import API from '../services/api';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { deleteSavedArticle, fetchSavedArticles } from '../services/api';
 import Loader from '../components/Loader';
 import NewsCard from '../components/NewsCard';
 import EmptyState from '../components/ui/EmptyState';
 import PageHeader from '../components/ui/PageHeader';
 import SectionContainer from '../components/ui/SectionContainer';
 import type { Article, SavedArticle } from '../types/news';
-import { getErrorMessage, newsSchemas, validateWithSchema } from '../validation';
+import { getErrorMessage } from '../validation';
 
 const SavedArticles = () => {
-    const [savedArticles, setSavedArticles] = useState<SavedArticle[]>([]);
-    const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [pendingByUrl, setPendingByUrl] = useState<Record<string, boolean>>({});
-    const isMountedRef = useRef(true);
+    const queryClient = useQueryClient();
+    const savedArticlesQuery = useQuery<SavedArticle[]>({
+        queryKey: ['saved-articles'],
+        queryFn: fetchSavedArticles
+    });
+    const savedArticles = savedArticlesQuery.data ?? [];
+    const queryErrorMessage = savedArticlesQuery.error
+        ? getErrorMessage(savedArticlesQuery.error, 'Failed to load saved articles.')
+        : '';
+    const errorMessage = error || queryErrorMessage;
+    const isLoading = savedArticlesQuery.isLoading;
 
-    useEffect(() => {
-        isMountedRef.current = true;
-        const fetchSavedArticles = async () => {
-            try {
-                const response = await API.get('/saved-articles');
-                const parsedSavedArticles = validateWithSchema(
-                    newsSchemas.savedArticleListSchema,
-                    response.data,
-                    'Received an invalid saved article list from server.'
-                );
-                if (!isMountedRef.current) return;
-                setSavedArticles(parsedSavedArticles);
-            } catch (err: unknown) {
-                if (!isMountedRef.current) return;
-                setError(getErrorMessage(err, 'Failed to load saved articles.'));
-                console.error(err);
-            } finally {
-                if (isMountedRef.current) {
-                    setLoading(false);
-                }
-            }
-        };
-
-        fetchSavedArticles();
-        return () => {
-            isMountedRef.current = false;
-        };
-    }, []);
+    const deleteSavedArticleMutation = useMutation({
+        mutationFn: deleteSavedArticle
+    });
 
     const handleToggleSave = async (article: Article) => {
         const currentUrl = article.url;
@@ -54,20 +38,23 @@ const SavedArticles = () => {
         setPendingByUrl((prev) => ({ ...prev, [currentUrl]: true }));
         setError('');
 
+        const previousSaved = savedArticles;
+        queryClient.setQueryData<SavedArticle[]>(['saved-articles'], (prev = []) =>
+            prev.filter((item) => item._id !== saved._id)
+        );
+
         try {
-            await API.delete(`/saved-articles/${saved._id}`);
-            setSavedArticles((prev) => prev.filter((item) => item._id !== saved._id));
+            await deleteSavedArticleMutation.mutateAsync(saved._id);
         } catch (err: unknown) {
+            queryClient.setQueryData<SavedArticle[]>(['saved-articles'], previousSaved);
             setError(getErrorMessage(err, 'Failed to remove article from saved list.'));
             console.error(err);
         } finally {
-            if (isMountedRef.current) {
-                setPendingByUrl((prev) => {
-                    const next = { ...prev };
-                    delete next[currentUrl];
-                    return next;
-                });
-            }
+            setPendingByUrl((prev) => {
+                const next = { ...prev };
+                delete next[currentUrl];
+                return next;
+            });
         }
     };
 
@@ -78,13 +65,13 @@ const SavedArticles = () => {
                 subtitle="Your personal reading list, synchronized across sessions."
             />
 
-            {error && (
+            {errorMessage && (
                 <div className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-[15px] text-danger">
-                    {error}
+                    {errorMessage}
                 </div>
             )}
 
-            {loading ? (
+            {isLoading ? (
                 <Loader />
             ) : savedArticles.length === 0 ? (
                 <EmptyState

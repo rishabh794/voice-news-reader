@@ -1,5 +1,5 @@
-import API from './api';
-import { authSchemas, validateWithSchema } from '../validation';
+import API from './client';
+import { authSchemas, validateWithSchema } from '../../validation';
 
 export interface AuthResponse {
     token: string;
@@ -7,7 +7,10 @@ export interface AuthResponse {
     authProvider?: 'local' | 'google';
 }
 
-export const registerWithPassword = async (email: string, password: string): Promise<{ message: string }> => {
+export const registerWithPassword = async (
+    email: string,
+    password: string
+): Promise<{ message: string }> => {
     const payload = validateWithSchema(
         authSchemas.authCredentialsSchema,
         { email, password },
@@ -22,7 +25,10 @@ export const registerWithPassword = async (email: string, password: string): Pro
     );
 };
 
-export const loginWithPassword = async (email: string, password: string): Promise<AuthResponse> => {
+export const loginWithPassword = async (
+    email: string,
+    password: string
+): Promise<AuthResponse> => {
     const payload = validateWithSchema(
         authSchemas.authCredentialsSchema,
         { email, password },

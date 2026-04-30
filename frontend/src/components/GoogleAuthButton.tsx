@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
-import { authenticateWithGoogle, type AuthResponse } from '../services/auth';
+import { authenticateWithGoogle, type AuthResponse } from '../services/api';
 import { getErrorMessage } from '../validation';
 
 type GoogleAuthMode = 'signin' | 'signup';

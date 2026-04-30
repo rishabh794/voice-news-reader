@@ -1,8 +1,7 @@
 import { useState, useRef, useContext, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/auth-context';
-import API from '../services/api';
-import { intentSchemas, transcribeSchemas, validateWithSchema } from '../validation';
+import { requestIntent, transcribeAudio } from '../services/api';
 
 const VoiceAssistant = () => {
     const [isRecording, setIsRecording] = useState(false);
@@ -57,15 +56,7 @@ const VoiceAssistant = () => {
                 formData.append('audio', audioBlob, 'recording.webm');
 
                 try {
-                    const transcribeRes = await API.post('/transcribe', formData, {
-                        headers: { 'Content-Type': 'multipart/form-data' }
-                    });
-
-                    const transcribedPayload = validateWithSchema(
-                        transcribeSchemas.transcribeResponseSchema,
-                        transcribeRes.data,
-                        'Received an invalid transcription payload from server.'
-                    );
+                    const transcribedPayload = await transcribeAudio(formData);
 
                     const spokenText = transcribedPayload.text.toLowerCase().trim();
                     if (!spokenText) return;
@@ -91,17 +82,7 @@ const VoiceAssistant = () => {
                         return;
                     }
 
-                    const intentRequest = validateWithSchema(
-                        intentSchemas.intentRequestSchema,
-                        { query: spokenText },
-                        'Recognized speech was empty.'
-                    );
-                    const intentRes = await API.post('/intent', intentRequest);
-                    const fullPayload = validateWithSchema(
-                        intentSchemas.intentResponseSchema,
-                        intentRes.data,
-                        'Received an invalid intent payload from server.'
-                    );
+                    const fullPayload = await requestIntent(spokenText, 'Recognized speech was empty.');
 
                     if (fullPayload.action === 'search') {
                         navigate('/dashboard', { state: { agentPayload: fullPayload } });

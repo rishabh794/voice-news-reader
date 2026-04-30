@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import API from '../services/api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { clearHistoryEntries, deleteHistoryEntry, fetchHistoryEntries, requestIntent } from '../services/api';
 import useAudioPlayer from '../hooks/useAudioPlayer';
 import { useToast } from '../hooks/useToast';
-import { getErrorMessage, intentSchemas, newsSchemas, validateWithSchema } from '../validation';
+import { getErrorMessage } from '../validation';
 import {
     HistoryEntryCard,
     HistoryEmptyState,
@@ -37,9 +38,9 @@ const normalizeHistoryCategory = (category: HistoryEntry['category']): HistoryCa
     return VALID_HISTORY_CATEGORIES.has(category) ? category : 'Uncategorized';
 };
 
+const EMPTY_HISTORY_ENTRIES: HistoryEntry[] = [];
+
 const History = () => {
-    const [history, setHistory] = useState<HistoryEntry[]>([]);
-    const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [expandedSourcesById, setExpandedSourcesById] = useState<Record<string, boolean>>({});
     const [expandedSummaryById, setExpandedSummaryById] = useState<Record<string, boolean>>({});
@@ -63,6 +64,27 @@ const History = () => {
         isEnded: isHistoryAudioEnded,
         isError: isHistoryAudioError
     } = historyAudio;
+
+    const queryClient = useQueryClient();
+    const historyQuery = useQuery<HistoryEntry[]>({
+        queryKey: ['history'],
+        queryFn: fetchHistoryEntries,
+        select: (entries) => sortHistoryEntries(entries)
+    });
+    const historyEntries = historyQuery.data ?? EMPTY_HISTORY_ENTRIES;
+    const historyErrorMessage = historyQuery.error
+        ? getErrorMessage(historyQuery.error, 'Failed to load history.')
+        : '';
+    const errorMessage = error || historyErrorMessage;
+    const isLoading = historyQuery.isLoading;
+
+    const deleteHistoryMutation = useMutation({
+        mutationFn: deleteHistoryEntry
+    });
+
+    const clearHistoryMutation = useMutation({
+        mutationFn: clearHistoryEntries
+    });
 
     const getEntryDate = useCallback((entry: HistoryEntry): Date | null => {
         const dateValue = entry.createdAt || entry.timestamp;
@@ -110,42 +132,15 @@ const History = () => {
     }, [activeAudioEntryId, toggleHistoryAudioPause]);
 
     useEffect(() => {
-        isMountedRef.current = true;
-        const fetchHistory = async () => {
-            try {
-                const response = await API.get('/history');
-                const entries = validateWithSchema(
-                    newsSchemas.historyEntryListSchema,
-                    response.data,
-                    'Received an invalid history payload from server.'
-                );
-                if (!isMountedRef.current) return;
-                setHistory(sortHistoryEntries(entries));
-            } catch (err: unknown) {
-                if (!isMountedRef.current) return;
-                setError(getErrorMessage(err, 'Failed to load history.'));
-                console.error(err);
-            } finally {
-                if (isMountedRef.current) {
-                    setLoading(false);
-                }
-            }
-        };
-
-        fetchHistory();
-        return () => {
-            isMountedRef.current = false;
-        };
-    }, []);
-
-    useEffect(() => {
         if (isHistoryAudioEnded || isHistoryAudioError) {
             setActiveAudioEntryId(null);
         }
     }, [isHistoryAudioEnded, isHistoryAudioError]);
 
     useEffect(() => {
+        isMountedRef.current = true;
         return () => {
+            isMountedRef.current = false;
             stopHistoryAudio();
         };
     }, [stopHistoryAudio]);
@@ -153,7 +148,7 @@ const History = () => {
     const filteredHistory = useMemo(() => {
         const normalizedSearch = searchTerm.trim().toLowerCase();
 
-        return history.filter((entry) => {
+        return historyEntries.filter((entry) => {
             const entryCategory = normalizeHistoryCategory(entry.category);
             if (activeCategory !== 'All' && entryCategory !== activeCategory) {
                 return false;
@@ -172,7 +167,7 @@ const History = () => {
             const searchableText = `${entry.query} ${entry.summary} ${entryCategory} ${articleText}`.toLowerCase();
             return searchableText.includes(normalizedSearch);
         });
-    }, [activeCategory, history, searchTerm]);
+    }, [activeCategory, historyEntries, searchTerm]);
 
     const toggleSources = (entryId: string) => {
         setExpandedSourcesById((prev) => ({
@@ -196,17 +191,7 @@ const History = () => {
         setRefreshingId(entry._id);
 
         try {
-            const validatedRequest = validateWithSchema(
-                intentSchemas.intentRequestSchema,
-                { query: entry.query },
-                'History query is empty.'
-            );
-            const response = await API.post('/intent', validatedRequest);
-            const payload = validateWithSchema(
-                intentSchemas.intentResponseSchema,
-                response.data,
-                'Received an invalid intent payload from server.'
-            );
+            const payload = await requestIntent(entry.query, 'History query is empty.');
 
             if (payload.action === 'search') {
                 const payloadArticles = payload.articles;
@@ -236,11 +221,14 @@ const History = () => {
     const handleDelete = async (entryId: string) => {
         if (deletingIds[entryId]) return;
 
-        const removedEntry = history.find((entry) => entry._id === entryId);
+        const removedEntry = historyEntries.find((entry) => entry._id === entryId);
         if (!removedEntry) return;
 
         setError('');
-        setHistory((prev) => prev.filter((entry) => entry._id !== entryId));
+        const previousHistory = historyEntries;
+        queryClient.setQueryData<HistoryEntry[]>(['history'], (prev = []) =>
+            prev.filter((entry) => entry._id !== entryId)
+        );
         setExpandedSourcesById((prev) => {
             if (!(entryId in prev)) return prev;
             const next = { ...prev };
@@ -265,14 +253,11 @@ const History = () => {
         }));
 
         try {
-            await API.delete(`/history/${entryId}`);
+            await deleteHistoryMutation.mutateAsync(entryId);
             showToast('History entry deleted.', 'success');
         } catch (err) {
             if (!isMountedRef.current) return;
-            setHistory((prev) => {
-                if (prev.some((entry) => entry._id === removedEntry._id)) return prev;
-                return sortHistoryEntries([...prev, removedEntry]);
-            });
+            queryClient.setQueryData<HistoryEntry[]>(['history'], previousHistory);
             setError('Failed to delete history entry. Please retry.');
             console.error(err);
         } finally {
@@ -287,12 +272,12 @@ const History = () => {
     };
 
     const handleClearAll = async () => {
-        if (isClearingAll || history.length === 0) return;
+        if (isClearingAll || historyEntries.length === 0) return;
 
-        const previousHistory = [...history];
+        const previousHistory = [...historyEntries];
 
         setError('');
-        setHistory([]);
+        queryClient.setQueryData<HistoryEntry[]>(['history'], []);
         setExpandedSourcesById({});
         setExpandedSummaryById({});
         setDeletingIds({});
@@ -305,11 +290,11 @@ const History = () => {
         setIsClearingAll(true);
 
         try {
-            await API.delete('/history');
+            await clearHistoryMutation.mutateAsync();
             showToast('All history entries cleared.', 'success');
         } catch (err: unknown) {
             if (!isMountedRef.current) return;
-            setHistory(sortHistoryEntries(previousHistory));
+            queryClient.setQueryData<HistoryEntry[]>(['history'], previousHistory);
             setError(getErrorMessage(err, 'Failed to clear history. Please retry.'));
             console.error(err);
         } finally {
@@ -335,12 +320,12 @@ const History = () => {
     return (
         <SectionContainer className="space-y-6">
             <HistoryHeader
-                canClearAll={!loading && history.length > 0}
+                canClearAll={!isLoading && historyEntries.length > 0}
                 isClearingAll={isClearingAll}
                 onClearAll={handleClearAll}
             />
 
-            {!loading && history.length > 0 && (
+            {!isLoading && historyEntries.length > 0 && (
                 <HistoryFilters
                     searchTerm={searchTerm}
                     onSearchTermChange={setSearchTerm}
@@ -350,26 +335,26 @@ const History = () => {
                 />
             )}
 
-            {loading && (
+            {isLoading && (
                 <HistoryLoadingState />
             )}
 
-            {error && (
-                <HistoryErrorAlert message={error} />
+            {errorMessage && (
+                <HistoryErrorAlert message={errorMessage} />
             )}
 
-            {!loading && history.length === 0 && !error && (
+            {!isLoading && historyEntries.length === 0 && !errorMessage && (
                 <HistoryEmptyState
                     muted
                     message="No saved briefings yet. Run a search to build your archive."
                 />
             )}
 
-            {!loading && history.length > 0 && filteredHistory.length === 0 && (
+            {!isLoading && historyEntries.length > 0 && filteredHistory.length === 0 && (
                 <HistoryEmptyState message="No briefings match your current search or category filter." />
             )}
 
-            {!loading && filteredHistory.length > 0 && (
+            {!isLoading && filteredHistory.length > 0 && (
                 <div className="space-y-4">
                     {filteredHistory.map((entry) => {
                         const isExpanded = Boolean(expandedSourcesById[entry._id]);

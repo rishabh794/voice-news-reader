@@ -36,6 +36,14 @@ const TopBar = ({
         event.preventDefault();
         const trimmed = searchTerm.trim();
         if (!trimmed) return;
+
+        const currentQuery = (new URLSearchParams(location.search).get('q') ?? '').trim().toLowerCase();
+        const normalizedSearch = trimmed.toLowerCase();
+        if (location.pathname === '/dashboard' && currentQuery === normalizedSearch) {
+            navigate('/dashboard', { replace: true, state: { query: trimmed } });
+            return;
+        }
+
         navigate(`/dashboard?q=${encodeURIComponent(trimmed)}`);
     };
 

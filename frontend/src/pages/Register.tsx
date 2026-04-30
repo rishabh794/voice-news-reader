@@ -6,7 +6,7 @@ import { useToast } from '../hooks/useToast';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
-import { registerWithPassword, type AuthResponse } from '../services/auth';
+import { registerWithPassword, type AuthResponse } from '../services/api';
 import { getErrorMessage } from '../validation';
 
 const EyeIcon = () => (
