@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { deleteSavedArticle, fetchSavedArticles, requestIntent, saveArticle } from '../services/api';
 import useAudioPlayer from '../hooks/useAudioPlayer';
+import { useToast } from '../hooks/useToast';
+import { isGibberish } from '../services/isGibberish';
 
 import SearchBar from '../components/ui/SearchBar';
 import Badge from '../components/ui/Badge';
@@ -24,6 +26,7 @@ interface DashboardLocationState {
 }
 
 const NO_ARTICLES_MESSAGE = 'No articles found related to this topic';
+const GIBBERISH_QUERY_MESSAGE = 'Could not understand that query. Please try another search.';
 
 const dashboardLocationStateSchema = z.object({
     agentPayload: intentSchemas.searchIntentResponseSchema.optional(),
@@ -49,6 +52,7 @@ const Dashboard = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const summaryAudio = useAudioPlayer();
+    const { showToast } = useToast();
     const {
         play: playAudio,
         togglePause: toggleAudioPause,
@@ -168,6 +172,17 @@ const Dashboard = () => {
 
     const executeIntelligentSearch = useCallback(async (searchQuery: string) => {
         const requestId = ++latestSearchRequestId.current;
+        const normalizedSearchQuery = searchQuery.trim();
+
+        if (isGibberish(normalizedSearchQuery)) {
+            if (!isMountedRef.current || requestId !== latestSearchRequestId.current) return;
+            stopAudio();
+            setLoading(false);
+            setError(GIBBERISH_QUERY_MESSAGE);
+            showToast(GIBBERISH_QUERY_MESSAGE, 'error');
+            return;
+        }
+
         if (isMountedRef.current) {
             stopAudio();
             setLoading(true);
@@ -175,7 +190,7 @@ const Dashboard = () => {
         }
 
         try {
-            const data = await requestIntent(searchQuery, 'Please enter a search query.');
+            const data = await requestIntent(normalizedSearchQuery, 'Please enter a search query.');
 
             if (data.action === 'search') {
                 const topic = data.topic;
@@ -223,12 +238,17 @@ const Dashboard = () => {
                 setLoading(false);
             }
         }
-    }, [playSummaryAudio, speakNoArticlesMessage, stopAudio]);
+    }, [playSummaryAudio, showToast, speakNoArticlesMessage, stopAudio]);
 
     const handleManualSearch = (e: FormEvent) => {
         e.preventDefault();
         const trimmed = query.trim();
         if (!trimmed) return;
+        if (isGibberish(trimmed)) {
+            setError(GIBBERISH_QUERY_MESSAGE);
+            showToast(GIBBERISH_QUERY_MESSAGE, 'error');
+            return;
+        }
         const currentRouteQuery = (new URLSearchParams(location.search).get('q') ?? '').trim().toLowerCase();
         if (currentRouteQuery === trimmed.toLowerCase()) {
             executeIntelligentSearch(trimmed);

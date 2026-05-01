@@ -1,7 +1,9 @@
 import { useState, useRef, useContext, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/auth-context';
+import { useToast } from '../hooks/useToast';
 import { requestIntent, transcribeAudio } from '../services/api';
+import { isGibberish } from '../services/isGibberish';
 
 const VoiceAssistant = () => {
     const [isRecording, setIsRecording] = useState(false);
@@ -15,6 +17,7 @@ const VoiceAssistant = () => {
     const authContext = useContext(AuthContext);
     const navigate = useNavigate();
     const location = useLocation();
+    const { showToast } = useToast();
 
     useEffect(() => {
         isMountedRef.current = true;
@@ -59,8 +62,12 @@ const VoiceAssistant = () => {
                     const transcribedPayload = await transcribeAudio(formData);
 
                     const spokenText = transcribedPayload.text.toLowerCase().trim();
-                    if (!spokenText) return;
                     if (!isMountedRef.current) return;
+
+                    if (isGibberish(spokenText)) {
+                        showToast('Could not understand that voice query. Please try again.', 'error');
+                        return;
+                    }
 
                     if (spokenText.includes('history')) {
                         navigate('/history');

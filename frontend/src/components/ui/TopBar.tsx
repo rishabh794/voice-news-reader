@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/auth-context';
 import { useToast } from '../../hooks/useToast';
 import { useTheme } from '../../hooks/useTheme';
+import { isGibberish } from '../../services/isGibberish';
 import Button from './Button';
 import SidebarToggle from './sidebar-toggle';
 
@@ -17,6 +18,7 @@ const TopBar = ({
     isSidebarOpen = false,
     onSidebarToggle
 }: TopBarProps) => {
+    const gibberishMessage = 'Could not understand that query. Please try another search.';
     const [searchTerm, setSearchTerm] = useState('');
     const authContext = useContext(AuthContext);
     const isAuthenticated = Boolean(authContext?.isAuthenticated);
@@ -36,6 +38,10 @@ const TopBar = ({
         event.preventDefault();
         const trimmed = searchTerm.trim();
         if (!trimmed) return;
+        if (isGibberish(trimmed)) {
+            showToast(gibberishMessage, 'error');
+            return;
+        }
 
         const currentQuery = (new URLSearchParams(location.search).get('q') ?? '').trim().toLowerCase();
         const normalizedSearch = trimmed.toLowerCase();
