@@ -11,7 +11,7 @@ const authProvidersSchema = new mongoose.Schema(
 const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: false },
-    googleId: { type: String, unique: true, sparse: true },
+    googleId: { type: String, unique: true, sparse: true }, // sparse - in case if its null for 2 users
     providers: { type: authProvidersSchema, default: () => ({ local: false, google: false }) }
 });
 
