@@ -15,6 +15,7 @@ export const AI_HISTORY_CATEGORIES = [
 
 export type AiHistoryCategory = (typeof AI_HISTORY_CATEGORIES)[number];
 export type HistoryCategory = AiHistoryCategory | 'Uncategorized';
+export type TopicCategory = (typeof AI_HISTORY_CATEGORIES)[number];
 
 export interface Article {
     _id?: string;
@@ -25,6 +26,7 @@ export interface Article {
     publishedAt?: string;
     source?: NewsSource;
     sourceName?: string;
+    topic?: string;
 }
 
 export interface SavedArticle {
@@ -49,4 +51,10 @@ export interface HistoryEntry {
     timestamp?: string;
     createdAt?: string;
     updatedAt?: string;
+}
+
+export interface PersonalizedFeed {
+    articles: Article[];
+    hasTopics: boolean;
+    topics: TopicCategory[];
 }

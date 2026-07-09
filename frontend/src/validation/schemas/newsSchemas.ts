@@ -15,7 +15,8 @@ export const articleSchema = z.object({
     image: z.string().optional(),
     publishedAt: z.string().optional(),
     source: newsSourceSchema.optional(),
-    sourceName: z.string().optional()
+    sourceName: z.string().optional(),
+    topic: z.string().optional()
 });
 
 export const articleListSchema = z.array(articleSchema);

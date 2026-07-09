@@ -6,6 +6,8 @@ import { deleteSavedArticle, fetchSavedArticles, requestIntent, saveArticle } fr
 import useAudioPlayer from '../hooks/useAudioPlayer';
 import { useToast } from '../hooks/useToast';
 import { isGibberish } from '../services/isGibberish';
+import { useTopicPreferences } from '../hooks/useTopicPreferences';
+import { usePersonalizedFeed } from '../hooks/usePersonalizedFeed';
 
 import SearchBar from '../components/ui/SearchBar';
 import Badge from '../components/ui/Badge';
@@ -13,9 +15,13 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import PageHeader from '../components/ui/PageHeader';
 import SectionContainer from '../components/ui/SectionContainer';
-import NewsCard from '../components/NewsCard';
 import Loader from '../components/Loader';
+import TopicSelector from '../components/TopicSelector';
+import TopicFilterBar from '../components/TopicFilterBar';
+import FeedArticleGrid from '../components/FeedArticleGrid';
+
 import type { Article, SavedArticle } from '../types/news';
+import { AI_HISTORY_CATEGORIES } from '../types/news';
 import { getErrorMessage, intentSchemas, newsSchemas, validateWithSchema } from '../validation';
 
 type SearchIntentPayload = z.infer<typeof intentSchemas.searchIntentResponseSchema>;
@@ -36,14 +42,21 @@ const dashboardLocationStateSchema = z.object({
 const EMPTY_SAVED_ARTICLES: SavedArticle[] = [];
 
 const Dashboard = () => {
+    // Search State
     const [query, setQuery] = useState('');
     const [summary, setSummary] = useState('');
     const [showSummary, setShowSummary] = useState(false);
     const [articles, setArticles] = useState<Article[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    // Saved Articles State
     const [saveError, setSaveError] = useState('');
     const [pendingSaveByUrl, setPendingSaveByUrl] = useState<Record<string, boolean>>({});
+
+    // Feed State
+    const [isEditingTopics, setIsEditingTopics] = useState(false);
+    const [activeFeedFilters, setActiveFeedFilters] = useState<string[]>([]);
 
     const lastHandledPayload = useRef<string | null>(null);
     const lastHandledRouteQuery = useRef<string | null>(null);
@@ -62,6 +75,20 @@ const Dashboard = () => {
         isPaused: isSummaryAudioPaused
     } = summaryAudio;
 
+    // Derived mode state
+    const isSearchActive = Boolean(query.trim()) || articles.length > 0;
+
+    // Topic & Feed Hooks
+    const { topics, hasTopics, isLoading: isTopicsLoading, updateTopics, isUpdating: isTopicsUpdating } = useTopicPreferences();
+    const { feedArticles, isLoading: isFeedLoading } = usePersonalizedFeed(!isSearchActive && hasTopics);
+
+    // Initialize feed filters with saved topics
+    useEffect(() => {
+        if (topics.length > 0 && activeFeedFilters.length === 0) {
+            setActiveFeedFilters(topics);
+        }
+    }, [topics, activeFeedFilters.length]);
+
     const playSummaryAudio = useCallback((text: string) => {
         playAudio(text);
     }, [playAudio]);
@@ -73,6 +100,20 @@ const Dashboard = () => {
     const toggleSummaryAudioPause = useCallback(() => {
         toggleAudioPause();
     }, [toggleAudioPause]);
+
+    const clearSearch = () => {
+        setQuery('');
+        setSummary('');
+        setShowSummary(false);
+        setArticles([]);
+        setError('');
+        stopAudio();
+        navigate('/dashboard', { replace: true });
+
+        sessionStorage.removeItem('dashboard_query');
+        sessionStorage.removeItem('dashboard_articles');
+        sessionStorage.removeItem('dashboard_summary');
+    };
 
     const restoreDashboardFromSession = useCallback((expectedQuery?: string): boolean => {
         const savedQuery = sessionStorage.getItem('dashboard_query');
@@ -102,7 +143,7 @@ const Dashboard = () => {
         }
     }, []);
 
-    const buildSavedMap = (savedArticles: SavedArticle[]) => { //key   = article URL ,value = saved article database ID
+    const buildSavedMap = (savedArticles: SavedArticle[]) => {
         return savedArticles.reduce<Record<string, string>>((acc, savedArticle) => {
             if (savedArticle.url && savedArticle._id) {
                 acc[savedArticle.url] = savedArticle._id;
@@ -111,7 +152,7 @@ const Dashboard = () => {
         }, {});
     };
 
-    const queryClient = useQueryClient(); // Access TanStack Query cache to update saved articles after mutations
+    const queryClient = useQueryClient();
     const savedArticlesQuery = useQuery<SavedArticle[]>({
         queryKey: ['saved-articles'],
         queryFn: fetchSavedArticles
@@ -243,7 +284,10 @@ const Dashboard = () => {
     const handleManualSearch = (e: FormEvent) => {
         e.preventDefault();
         const trimmed = query.trim();
-        if (!trimmed) return;
+        if (!trimmed) {
+            clearSearch();
+            return;
+        }
         if (isGibberish(trimmed)) {
             setError(GIBBERISH_QUERY_MESSAGE);
             showToast(GIBBERISH_QUERY_MESSAGE, 'error');
@@ -284,7 +328,6 @@ const Dashboard = () => {
         const historyQuery = state?.query;
         const routeQuery = (new URLSearchParams(location.search).get('q') ?? '').trim();
 
-        // SCENARIO 1: Came from Voice Command / History Refresh (Pre-fetched data)
         if (agentPayload?.topic) {
             const payloadSummary = agentPayload.summary || '';
             const payloadArticles = Array.isArray(agentPayload.articles) ? agentPayload.articles : [];
@@ -326,7 +369,6 @@ const Dashboard = () => {
 
             navigate(location.pathname, { replace: true, state: {} });
         }
-        // SCENARIO 2: Backward-compatible fallback (history sends only query)
         else if (historyQuery) {
             const historySignature = `history:${historyQuery}`;
             if (lastHandledPayload.current === historySignature) return;
@@ -336,7 +378,6 @@ const Dashboard = () => {
             executeIntelligentSearch(historyQuery);
             navigate(location.pathname, { replace: true, state: {} });
         }
-        // SCENARIO 3: Normal Page Load (Restore from Session)
         else if (!lastHandledPayload.current && !routeQuery) {
             if (restoreDashboardFromSession()) {
                 const savedQuery = sessionStorage.getItem('dashboard_query');
@@ -355,11 +396,32 @@ const Dashboard = () => {
         };
     }, [stopAudio]);
 
+    const filteredFeedArticles = useMemo(() => {
+        if (!feedArticles.length || activeFeedFilters.length === 0) return feedArticles;
+        return feedArticles.filter(article => article.topic && activeFeedFilters.includes(article.topic));
+    }, [feedArticles, activeFeedFilters]);
+
+    const handleSaveTopics = async (newTopics: string[]) => {
+        try {
+            await updateTopics(newTopics);
+            setIsEditingTopics(false);
+            setActiveFeedFilters(newTopics);
+        } catch (err) {
+            showToast('Failed to save topics', 'error');
+        }
+    };
+
+    const handleToggleFilter = (topic: string) => {
+        setActiveFeedFilters((prev) =>
+            prev.includes(topic) ? prev.filter(t => t !== topic) : [...prev, topic]
+        );
+    };
+
     return (
         <SectionContainer className="space-y-6">
             <PageHeader
                 title="Dashboard"
-                subtitle="Search the latest briefings and listen to the summarized results."
+                subtitle={isSearchActive ? "Search the latest briefings and listen to the summarized results." : "Your personalized daily news feed."}
             />
 
             <div id="search">
@@ -373,7 +435,25 @@ const Dashboard = () => {
                 />
             </div>
 
-            {!loading && summary && showSummary && (
+            {/* ERROR MESSAGES */}
+            {error && (
+                <div className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-[15px] text-danger flex justify-between items-center">
+                    <span>{error}</span>
+                    {isSearchActive && (
+                        <Button type="button" variant="ghost" size="sm" onClick={clearSearch}>
+                            Clear Search
+                        </Button>
+                    )}
+                </div>
+            )}
+            {saveError && (
+                <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-[15px] text-warning">
+                    {saveError}
+                </div>
+            )}
+
+            {/* SUMMARY CARD (Only in search mode) */}
+            {isSearchActive && !loading && summary && showSummary && (
                 <Card className="p-6" variant="elevated">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <Badge variant="primary">Latest Summary</Badge>
@@ -404,31 +484,82 @@ const Dashboard = () => {
                 </Card>
             )}
 
-            {error && (
-                <div className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-[15px] text-danger">
-                    {error}
-                </div>
-            )}
-            {saveError && (
-                <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-[15px] text-warning">
-                    {saveError}
-                </div>
-            )}
-
-            {loading ? (
-                <Loader />
-            ) : (
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-5">
-                    {articles.map((article, index) => (
-                        <NewsCard
-                            key={article.url || index}
-                            article={article}
-                            isSaved={Boolean(savedArticleIdsByUrl[article.url])}
+            {/* MAIN CONTENT AREA */}
+            {isSearchActive ? (
+                // SEARCH MODE
+                loading ? (
+                    <Loader />
+                ) : (
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-semibold text-text">Search Results</h3>
+                            <Button type="button" variant="ghost" size="sm" onClick={clearSearch}>
+                                Back to Feed
+                            </Button>
+                        </div>
+                        <FeedArticleGrid
+                            articles={articles}
+                            savedArticleIdsByUrl={savedArticleIdsByUrl}
                             onToggleSave={handleToggleSave}
-                            saveDisabled={Boolean(article.url && pendingSaveByUrl[article.url])}
+                            pendingSaveByUrl={pendingSaveByUrl}
                         />
-                    ))}
-                </div>
+                    </div>
+                )
+            ) : (
+                // FEED MODE
+                isTopicsLoading ? (
+                    <Loader />
+                ) : !hasTopics ? (
+                    // ONBOARDING MODE
+                    <Card className="p-8" variant="elevated">
+                        <TopicSelector
+                            availableTopics={AI_HISTORY_CATEGORIES}
+                            selectedTopics={[]}
+                            onSave={handleSaveTopics}
+                            isSaving={isTopicsUpdating}
+                            variant="onboarding"
+                        />
+                    </Card>
+                ) : isEditingTopics ? (
+                    // EDIT TOPICS MODE
+                    <Card className="p-6" variant="elevated">
+                        <h3 className="text-xl font-semibold mb-6">Edit your topics</h3>
+                        <TopicSelector
+                            availableTopics={AI_HISTORY_CATEGORIES}
+                            selectedTopics={topics}
+                            onSave={handleSaveTopics}
+                            isSaving={isTopicsUpdating}
+                            variant="compact"
+                            onCancel={() => setIsEditingTopics(false)}
+                        />
+                    </Card>
+                ) : (
+                    // PERSONALIZED FEED
+                    <div className="space-y-6">
+                        <TopicFilterBar
+                            topics={topics}
+                            activeTopics={activeFeedFilters}
+                            onToggleTopic={handleToggleFilter}
+                            onEditTopics={() => setIsEditingTopics(true)}
+                        />
+
+                        {isFeedLoading ? (
+                            <Loader />
+                        ) : filteredFeedArticles.length > 0 ? (
+                            <FeedArticleGrid
+                                articles={filteredFeedArticles}
+                                savedArticleIdsByUrl={savedArticleIdsByUrl}
+                                onToggleSave={handleToggleSave}
+                                pendingSaveByUrl={pendingSaveByUrl}
+                            />
+                        ) : (
+                            <div className="text-center py-12 text-muted">
+                                <p>No articles found for your selected topics right now.</p>
+                                <p className="text-sm mt-2">Check back later or try different topics.</p>
+                            </div>
+                        )}
+                    </div>
+                )
             )}
         </SectionContainer>
     );
