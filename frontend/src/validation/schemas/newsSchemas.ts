@@ -21,6 +21,18 @@ export const articleSchema = z.object({
 
 export const articleListSchema = z.array(articleSchema);
 
+export const collectionSchema = z.object({
+    _id: z.string(),
+    userId: z.string(),
+    name: z.string(),
+    icon: z.string(),
+    isDefault: z.boolean(),
+    createdAt: z.string(),
+    updatedAt: z.string()
+});
+
+export const collectionListSchema = z.array(collectionSchema);
+
 export const savedArticleSchema = z.object({
     _id: z.string(),
     userId: z.string(),
@@ -30,7 +42,9 @@ export const savedArticleSchema = z.object({
     image: z.string().optional().default(''),
     publishedAt: z.string().optional(),
     sourceName: z.string().optional().default(''),
-    savedAt: z.string()
+    savedAt: z.string(),
+    collectionId: z.string(),
+    isRead: z.boolean().default(false)
 });
 
 export const savedArticleListSchema = z.array(savedArticleSchema);

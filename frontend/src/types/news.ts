@@ -29,6 +29,16 @@ export interface Article {
     topic?: string;
 }
 
+export interface Collection {
+    _id: string;
+    userId: string;
+    name: string;
+    icon: string;
+    isDefault: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface SavedArticle {
     _id: string;
     userId: string;
@@ -39,6 +49,8 @@ export interface SavedArticle {
     publishedAt?: string;
     sourceName: string;
     savedAt: string;
+    collectionId: string;
+    isRead: boolean;
 }
 
 export interface HistoryEntry {

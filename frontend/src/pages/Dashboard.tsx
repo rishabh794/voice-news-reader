@@ -19,6 +19,7 @@ import Loader from '../components/Loader';
 import TopicSelector from '../components/TopicSelector';
 import TopicFilterBar from '../components/TopicFilterBar';
 import FeedArticleGrid from '../components/FeedArticleGrid';
+import SaveToCollectionModal from '../components/SaveToCollectionModal';
 
 import type { Article, SavedArticle } from '../types/news';
 import { AI_HISTORY_CATEGORIES } from '../types/news';
@@ -53,6 +54,7 @@ const Dashboard = () => {
     // Saved Articles State
     const [saveError, setSaveError] = useState('');
     const [pendingSaveByUrl, setPendingSaveByUrl] = useState<Record<string, boolean>>({});
+    const [articleToSave, setArticleToSave] = useState<Article | null>(null);
 
     // Feed State
     const [isEditingTopics, setIsEditingTopics] = useState(false);
@@ -155,13 +157,14 @@ const Dashboard = () => {
     const queryClient = useQueryClient();
     const savedArticlesQuery = useQuery<SavedArticle[]>({
         queryKey: ['saved-articles'],
-        queryFn: fetchSavedArticles
+        queryFn: () => fetchSavedArticles()
     });
     const savedArticles = savedArticlesQuery.data ?? EMPTY_SAVED_ARTICLES;
     const savedArticleIdsByUrl = useMemo(() => buildSavedMap(savedArticles), [savedArticles]);
 
     const saveArticleMutation = useMutation({
-        mutationFn: saveArticle,
+        mutationFn: ({ article, collectionId }: { article: Article; collectionId?: string }) => 
+            saveArticle(article, collectionId),
         onSuccess: (savedArticle) => {
             queryClient.setQueryData<SavedArticle[]>(['saved-articles'], (prev = []) => {
                 if (prev.some((item) => item._id === savedArticle._id)) {
@@ -169,6 +172,10 @@ const Dashboard = () => {
                 }
                 return [...prev, savedArticle];
             });
+            showToast('Article saved to collection', 'success');
+        },
+        onError: (err) => {
+            setSaveError(getErrorMessage(err, 'Failed to save article. Please retry.'));
         }
     });
 
@@ -186,30 +193,31 @@ const Dashboard = () => {
         if (!articleUrl || pendingSaveByUrl[articleUrl]) return;
 
         setSaveError('');
-        setPendingSaveByUrl((prev) => ({ ...prev, [articleUrl]: true }));
+        const existingSavedId = savedArticleIdsByUrl[articleUrl];
 
-        try {
-            const existingSavedId = savedArticleIdsByUrl[articleUrl];
-
-            if (existingSavedId) {
+        if (existingSavedId) {
+            setPendingSaveByUrl((prev) => ({ ...prev, [articleUrl]: true }));
+            try {
                 await deleteSavedArticleMutation.mutateAsync(existingSavedId);
-                return;
+                showToast('Article removed from saved', 'success');
+            } catch (err: unknown) {
+                setSaveError(getErrorMessage(err, 'Failed to update saved articles. Please retry.'));
+                console.error(err);
+            } finally {
+                if (isMountedRef.current) {
+                    setPendingSaveByUrl((prev) => {
+                        const next = { ...prev };
+                        delete next[articleUrl];
+                        return next;
+                    });
+                }
             }
-
-            await saveArticleMutation.mutateAsync(article);
-        } catch (err: unknown) {
-            setSaveError(getErrorMessage(err, 'Failed to update saved articles. Please retry.'));
-            console.error(err);
-        } finally {
-            if (isMountedRef.current) {
-                setPendingSaveByUrl((prev) => {
-                    const next = { ...prev };
-                    delete next[articleUrl];
-                    return next;
-                });
-            }
+            return;
         }
-    }, [pendingSaveByUrl, savedArticleIdsByUrl, deleteSavedArticleMutation, saveArticleMutation]);
+
+        // Open modal to select collection
+        setArticleToSave(article);
+    }, [pendingSaveByUrl, savedArticleIdsByUrl, deleteSavedArticleMutation, showToast]);
 
     const executeIntelligentSearch = useCallback(async (searchQuery: string) => {
         const requestId = ++latestSearchRequestId.current;
@@ -561,6 +569,26 @@ const Dashboard = () => {
                     </div>
                 )
             )}
+
+            <SaveToCollectionModal
+                isOpen={!!articleToSave}
+                onClose={() => setArticleToSave(null)}
+                onSelectCollection={(collectionId) => {
+                    if (articleToSave) {
+                        setPendingSaveByUrl((prev) => ({ ...prev, [articleToSave.url]: true }));
+                        saveArticleMutation.mutate({ article: articleToSave, collectionId }, {
+                            onSettled: () => {
+                                setPendingSaveByUrl((prev) => {
+                                    const next = { ...prev };
+                                    delete next[articleToSave.url];
+                                    return next;
+                                });
+                            }
+                        });
+                    }
+                    setArticleToSave(null);
+                }}
+            />
         </SectionContainer>
     );
 };

@@ -26,7 +26,13 @@ export const addSavedArticleBodySchema = z.object({
     url: z.string().trim().min(1, 'Article url is required'),
     image: optionalTrimmedStringSchema,
     publishedAt: optionalDateStringSchema,
-    sourceName: optionalTrimmedStringSchema
+    sourceName: optionalTrimmedStringSchema,
+    collectionId: optionalTrimmedStringSchema
+});
+
+export const updateSavedArticleBodySchema = z.object({
+    collectionId: optionalTrimmedStringSchema,
+    isRead: z.boolean().optional()
 });
 
 export const deleteSavedArticleParamsSchema = z.object({

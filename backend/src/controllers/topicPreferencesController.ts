@@ -33,7 +33,7 @@ export const updateTopics = async (req: AuthRequest, res: Response): Promise<any
         const updatedUser = await User.findByIdAndUpdate(
             req.user.id,
             { topicPreferences: uniqueTopics },
-            { new: true, runValidators: true }
+            { returnDocument: 'after', runValidators: true }
         ).lean();
 
         if (!updatedUser) {

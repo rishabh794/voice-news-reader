@@ -10,6 +10,7 @@ interface SaveArticlePayload {
     image?: unknown;
     publishedAt?: unknown;
     sourceName?: unknown;
+    collectionId?: unknown;
 }
 
 const normalizeOptionalString = (value: unknown): string | undefined => {
@@ -62,8 +63,25 @@ export const addSavedArticle = async (req: AuthRequest, res: Response): Promise<
             url,
             image,
             sourceName,
-            ...(publishedAt ? { publishedAt } : {})
+            ...(publishedAt ? { publishedAt } : {}),
+            collectionId: undefined as any
         };
+
+        if (payload.collectionId && typeof payload.collectionId === 'string' && mongoose.Types.ObjectId.isValid(payload.collectionId)) {
+            articleToSave.collectionId = new mongoose.Types.ObjectId(payload.collectionId);
+        } else {
+            const { Collection } = await import('../models/Collection.js');
+            let defaultCollection = await Collection.findOne({ userId, isDefault: true });
+            if (!defaultCollection) {
+                defaultCollection = await Collection.create({
+                    userId,
+                    name: 'All Saved',
+                    icon: 'LibraryBig',
+                    isDefault: true
+                });
+            }
+            articleToSave.collectionId = defaultCollection._id;
+        }
 
         const savedArticle = await SavedArticle.create(articleToSave);
 
@@ -96,7 +114,14 @@ export const getSavedArticles = async (req: AuthRequest, res: Response): Promise
         }
 
         const userId = req.user.id;
-        const savedArticles = await SavedArticle.find({ userId }).sort({ savedAt: -1 });
+        const { collectionId } = req.query;
+        
+        const filter: any = { userId };
+        if (collectionId && typeof collectionId === 'string' && mongoose.Types.ObjectId.isValid(collectionId)) {
+            filter.collectionId = collectionId;
+        }
+        
+        const savedArticles = await SavedArticle.find(filter).sort({ savedAt: -1 });
 
         return res.json(savedArticles);
     } catch (error) {
@@ -115,7 +140,7 @@ export const deleteSavedArticle = async (req: AuthRequest, res: Response): Promi
         const rawId = req.params.id;
         const id = Array.isArray(rawId) ? rawId[0] : rawId;
 
-        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        if (!id || !mongoose.Types.ObjectId.isValid(id as string)) {
             return res.status(400).json({ error: 'Invalid saved article id' });
         }
 
@@ -128,5 +153,51 @@ export const deleteSavedArticle = async (req: AuthRequest, res: Response): Promi
     } catch (error) {
         console.error('Delete Saved Article Error:', error);
         return res.status(500).json({ error: 'Server error while deleting saved article' });
+    }
+};
+
+export const updateSavedArticle = async (req: AuthRequest, res: Response): Promise<any> => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        const userId = req.user.id;
+        const { id } = req.params;
+        const { collectionId, isRead } = req.body;
+
+        if (!id || !mongoose.Types.ObjectId.isValid(id as string)) {
+            return res.status(400).json({ error: 'Invalid saved article id' });
+        }
+
+        const updateFields: any = {};
+        if (collectionId !== undefined) {
+            if (!mongoose.Types.ObjectId.isValid(collectionId)) {
+                return res.status(400).json({ error: 'Invalid collection id' });
+            }
+            updateFields.collectionId = collectionId;
+        }
+        if (isRead !== undefined) {
+            updateFields.isRead = Boolean(isRead);
+        }
+
+        if (Object.keys(updateFields).length === 0) {
+            return res.status(400).json({ error: 'No update fields provided' });
+        }
+
+        const updated = await SavedArticle.findOneAndUpdate(
+            { _id: id, userId },
+            { $set: updateFields },
+            { returnDocument: 'after' }
+        ).populate('collectionId', 'name icon isDefault');
+
+        if (!updated) {
+            return res.status(404).json({ error: 'Saved article not found' });
+        }
+
+        return res.json(updated);
+    } catch (error) {
+        console.error('Update Saved Article Error:', error);
+        return res.status(500).json({ error: 'Server error while updating saved article' });
     }
 };

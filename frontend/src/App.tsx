@@ -9,6 +9,8 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import History from './pages/History';
 import SavedArticles from './pages/SavedArticles';
+import CollectionDetail from './pages/CollectionDetail';
+import ReaderView from './pages/ReaderView';
 
 function App() {
   return (
@@ -41,6 +43,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <SavedArticles />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/collections/:id"
+            element={
+              <ProtectedRoute>
+                <CollectionDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reader"
+            element={
+              <ProtectedRoute>
+                <ReaderView />
               </ProtectedRoute>
             }
           />

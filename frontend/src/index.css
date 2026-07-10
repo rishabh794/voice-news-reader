@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Geist+Sans:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -87,6 +88,10 @@ body {
 h1, h2, h3, h4 {
   @apply font-display text-text;
   letter-spacing: -0.02em;
+}
+
+.prose a {
+  @apply text-primary font-medium underline underline-offset-4 hover:opacity-85 transition-opacity;
 }
 
 ::selection {
