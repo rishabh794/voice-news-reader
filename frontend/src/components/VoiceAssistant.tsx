@@ -2,7 +2,7 @@ import { useState, useRef, useContext, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/auth-context';
 import { useToast } from '../hooks/useToast';
-import { requestIntent, transcribeAudio } from '../services/api';
+import { transcribeAudio } from '../services/api';
 import { isGibberish } from '../services/isGibberish';
 
 const VoiceAssistant = () => {
@@ -89,11 +89,7 @@ const VoiceAssistant = () => {
                         return;
                     }
 
-                    const fullPayload = await requestIntent(spokenText, 'Recognized speech was empty.');
-
-                    if (fullPayload.action === 'search') {
-                        navigate('/dashboard', { state: { agentPayload: fullPayload } });
-                    }
+                    navigate(`/dashboard?q=${encodeURIComponent(spokenText)}`);
 
                 } catch (error) {
                     console.error("AI Pipeline failed:", error);

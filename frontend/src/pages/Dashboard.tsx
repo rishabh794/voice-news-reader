@@ -8,6 +8,7 @@ import { useToast } from '../hooks/useToast';
 import { isGibberish } from '../services/isGibberish';
 import { useTopicPreferences } from '../hooks/useTopicPreferences';
 import { usePersonalizedFeed } from '../hooks/usePersonalizedFeed';
+import { useSSESearch } from '../hooks/useSSESearch';
 
 import SearchBar from '../components/ui/SearchBar';
 import Badge from '../components/ui/Badge';
@@ -20,6 +21,7 @@ import TopicSelector from '../components/TopicSelector';
 import TopicFilterBar from '../components/TopicFilterBar';
 import FeedArticleGrid from '../components/FeedArticleGrid';
 import SaveToCollectionModal from '../components/SaveToCollectionModal';
+import PipelineProgress from '../components/PipelineProgress';
 
 import type { Article, SavedArticle } from '../types/news';
 import { AI_HISTORY_CATEGORIES } from '../types/news';
@@ -77,8 +79,44 @@ const Dashboard = () => {
         isPaused: isSummaryAudioPaused
     } = summaryAudio;
 
+    const sse = useSSESearch({
+        onIntent: (intent) => {
+            setQuery(intent.topic);
+            setSummary('');
+            setShowSummary(false);
+            setArticles([]);
+            setError('');
+        },
+        onArticles: (fetchedArticles) => {
+            setArticles(fetchedArticles);
+            if (fetchedArticles.length === 0) {
+                setError(NO_ARTICLES_MESSAGE);
+                speakNoArticlesMessage(NO_ARTICLES_MESSAGE);
+            }
+        },
+        onSummary: (summaryText) => {
+            setSummary(summaryText);
+            setShowSummary(true);
+            playSummaryAudio(summaryText);
+        },
+        onError: (errMsg) => {
+            setError(errMsg);
+            setLoading(false);
+            stopAudio();
+        },
+        onComplete: (data) => {
+            if (data) {
+                const finalQuery = data.intent?.topic || query;
+                sessionStorage.setItem('dashboard_query', finalQuery);
+                sessionStorage.setItem('dashboard_articles', JSON.stringify(data.articles));
+                sessionStorage.setItem('dashboard_summary', data.summary);
+            }
+            setLoading(false);
+        }
+    });
+
     // Derived mode state
-    const isSearchActive = Boolean(query.trim()) || articles.length > 0;
+    const isSearchActive = Boolean(query.trim()) || articles.length > 0 || sse.isStreaming;
 
     // Topic & Feed Hooks
     const { topics, hasTopics, isLoading: isTopicsLoading, updateTopics, isUpdating: isTopicsUpdating } = useTopicPreferences();
@@ -104,6 +142,8 @@ const Dashboard = () => {
     }, [toggleAudioPause]);
 
     const clearSearch = () => {
+        sse.abort();
+        sse.reset();
         setQuery('');
         setSummary('');
         setShowSummary(false);
@@ -220,11 +260,9 @@ const Dashboard = () => {
     }, [pendingSaveByUrl, savedArticleIdsByUrl, deleteSavedArticleMutation, showToast]);
 
     const executeIntelligentSearch = useCallback(async (searchQuery: string) => {
-        const requestId = ++latestSearchRequestId.current;
         const normalizedSearchQuery = searchQuery.trim();
 
         if (isGibberish(normalizedSearchQuery)) {
-            if (!isMountedRef.current || requestId !== latestSearchRequestId.current) return;
             stopAudio();
             setLoading(false);
             setError(GIBBERISH_QUERY_MESSAGE);
@@ -238,56 +276,8 @@ const Dashboard = () => {
             setError('');
         }
 
-        try {
-            const data = await requestIntent(normalizedSearchQuery, 'Please enter a search query.');
-
-            if (data.action === 'search') {
-                const topic = data.topic;
-                const generatedSummary = data.summary;
-                const noArticlesMessage = data.message?.trim()
-                    ? data.message.trim()
-                    : NO_ARTICLES_MESSAGE;
-
-                if (data.articles.length === 0) {
-                    if (!isMountedRef.current || requestId !== latestSearchRequestId.current) return;
-                    speakNoArticlesMessage(noArticlesMessage);
-                    setArticles([]);
-                    setQuery(topic);
-                    setSummary('');
-                    setShowSummary(false);
-                    setError(noArticlesMessage);
-                    sessionStorage.setItem('dashboard_query', topic);
-                    sessionStorage.setItem('dashboard_articles', JSON.stringify([]));
-                    sessionStorage.setItem('dashboard_summary', '');
-                    return;
-                }
-
-                if (!isMountedRef.current || requestId !== latestSearchRequestId.current) return;
-                setArticles(data.articles);
-                setQuery(topic);
-                setSummary(generatedSummary);
-                setShowSummary(Boolean(generatedSummary));
-
-                sessionStorage.setItem('dashboard_query', topic);
-                sessionStorage.setItem('dashboard_articles', JSON.stringify(data.articles));
-                sessionStorage.setItem('dashboard_summary', generatedSummary);
-
-                if (generatedSummary) playSummaryAudio(generatedSummary);
-            } else {
-                if (!isMountedRef.current || requestId !== latestSearchRequestId.current) return;
-                speakNoArticlesMessage(NO_ARTICLES_MESSAGE);
-                setError(NO_ARTICLES_MESSAGE);
-            }
-        } catch (err: unknown) {
-            if (!isMountedRef.current || requestId !== latestSearchRequestId.current) return;
-            setError(getErrorMessage(err, 'Failed to fetch news. Check the console.'));
-            console.error(err);
-        } finally {
-            if (isMountedRef.current && requestId === latestSearchRequestId.current) {
-                setLoading(false);
-            }
-        }
-    }, [playSummaryAudio, showToast, speakNoArticlesMessage, stopAudio]);
+        sse.startSearch(normalizedSearchQuery);
+    }, [sse, showToast, stopAudio]);
 
     const handleManualSearch = (e: FormEvent) => {
         e.preventDefault();
@@ -313,6 +303,7 @@ const Dashboard = () => {
         const routeQuery = (new URLSearchParams(location.search).get('q') ?? '').trim();
         if (!routeQuery) {
             lastHandledRouteQuery.current = null;
+            restoreDashboardFromSession();
             return;
         }
 
@@ -458,6 +449,16 @@ const Dashboard = () => {
                 <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-[15px] text-warning">
                     {saveError}
                 </div>
+            )}
+
+            {/* SSE PIPELINE PROGRESS */}
+            {sse.isStreaming && (
+                <PipelineProgress 
+                    stage={sse.stage} 
+                    intentTopic={sse.intent?.topic || null} 
+                    articleCount={sse.articles.length} 
+                    category={sse.category} 
+                />
             )}
 
             {/* SUMMARY CARD (Only in search mode) */}

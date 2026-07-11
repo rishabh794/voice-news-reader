@@ -8,6 +8,7 @@ import topicPreferencesRoutes from './topicPreferences.ts';
 import feedRoutes from './feed.ts';
 import collectionsRoutes from './collections.ts';
 import readerRoutes from './reader.ts';
+import streamRoutes from './stream.ts';
 
 const router = express.Router();
 
@@ -20,5 +21,6 @@ router.use('/topics', topicPreferencesRoutes);
 router.use('/feed', feedRoutes);
 router.use('/collections', collectionsRoutes);
 router.use('/reader', readerRoutes);
+router.use('/stream', streamRoutes);
 
 export default router;

@@ -32,8 +32,15 @@ const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number): Promise<
         if (timeoutHandle) clearTimeout(timeoutHandle);
     }
 };
+import { rateLimit } from '../middleware/rateLimiter.js';
+import { globalQuota } from '../middleware/globalQuota.js';
 
-router.post('/', verifyToken, upload.single('audio'), async (req: Request, res: Response): Promise<void> => {
+router.post('/', 
+    verifyToken, 
+    rateLimit({ resource: 'transcribe', perUser: 5, windowSeconds: 60, burst: 8 }),
+    globalQuota('groq'),
+    upload.single('audio'), 
+    async (req: Request, res: Response): Promise<void> => {
     let actualFilePath = '';
 
     try {

@@ -80,9 +80,6 @@ export const deleteCollection = async (req: AuthRequest, res: Response): Promise
         }
         
         await Collection.deleteOne({ _id: id });
-        
-        // Note: The articles associated with this collection should ideally be deleted or moved to default.
-        // For simplicity, we could just delete them, or move them to the default collection.
         // Let's move them to the default collection.
         const defaultCollection = await Collection.findOne({ userId, isDefault: true });
         if (defaultCollection) {
