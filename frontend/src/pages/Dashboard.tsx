@@ -258,6 +258,7 @@ const Dashboard = () => {
         setArticleToSave(article);
     }, [pendingSaveByUrl, savedArticleIdsByUrl, deleteSavedArticleMutation, showToast]);
 
+    const { startSearch } = sse;
     const executeIntelligentSearch = useCallback(async (searchQuery: string) => {
         const normalizedSearchQuery = searchQuery.trim();
 
@@ -275,8 +276,8 @@ const Dashboard = () => {
             setError('');
         }
 
-        sse.startSearch(normalizedSearchQuery);
-    }, [sse, showToast, stopAudio]);
+        startSearch(normalizedSearchQuery);
+    }, [startSearch, showToast, stopAudio]);
 
     const handleManualSearch = (e: FormEvent) => {
         e.preventDefault();
@@ -300,16 +301,16 @@ const Dashboard = () => {
 
     useEffect(() => {
         const routeQuery = (new URLSearchParams(location.search).get('q') ?? '').trim();
+        const normalizedRouteQuery = routeQuery.toLowerCase();
+        
+        if (lastHandledRouteQuery.current === normalizedRouteQuery) return;
+        lastHandledRouteQuery.current = normalizedRouteQuery;
+
         if (!routeQuery) {
-            lastHandledRouteQuery.current = null;
             restoreDashboardFromSession();
             return;
         }
 
-        const normalizedRouteQuery = routeQuery.toLowerCase();
-        if (lastHandledRouteQuery.current === normalizedRouteQuery) return;
-
-        lastHandledRouteQuery.current = normalizedRouteQuery;
         if (restoreDashboardFromSession(routeQuery)) {
             lastHandledPayload.current = `cache:${routeQuery}`;
             return;
