@@ -4,7 +4,7 @@ import { User } from '../models/User.js';
 import { searchGNews } from '../services/tools.js';
 import { feedCache } from '../services/feedCache.js';
 
-const CACHE_TTL_SECONDS = 600 * 60; // 60 minutes
+const CACHE_TTL_SECONDS = 600 * 60; // 10 hrs
 
 export const getPersonalizedFeed = async (req: AuthRequest, res: Response): Promise<any> => {
     try {
@@ -38,15 +38,17 @@ export const getPersonalizedFeed = async (req: AuthRequest, res: Response): Prom
                 continue;
             }
 
-            // 2. Fetch from GNews
-            const { rawArticles } = await searchGNews(topic);
+            try {
+                // 2. Fetch from GNews
+                const { rawArticles } = await searchGNews(topic);
 
-            // 3. Save to cache ONLY if we got results (prevents caching 429 empty arrays)
-            if (rawArticles && rawArticles.length > 0) {
-                await feedCache.set(cacheKey, rawArticles, CACHE_TTL_SECONDS);
-                allArticles.push(...rawArticles.map((a: any) => ({ ...a, topic })));
-            } else {
-                console.warn(`No articles fetched for topic: ${topic}. Not caching.`);
+                // 3. Save to cache ONLY if we got results (prevents caching 429 empty arrays)
+                if (rawArticles && rawArticles.length > 0) {
+                    await feedCache.set(cacheKey, rawArticles, CACHE_TTL_SECONDS);
+                    allArticles.push(...rawArticles.map((a: any) => ({ ...a, topic })));
+                }
+            } catch (error) {
+                console.error(`Failed to fetch articles for topic "${topic}":`, error instanceof Error ? error.message : error);
             }
 
             // Respect 1 req/sec rate limit of GNews free tier by adding a 1050ms delay

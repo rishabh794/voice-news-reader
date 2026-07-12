@@ -39,7 +39,7 @@ Rules for "topic":
 
 Respond ONLY with pure JSON. Do not include markdown formatting or explanations.`;
 
-export const classifyIntent = async (query: string): Promise<{ action: string; topic: string | null }> => {
+export const classifyIntent = async (query: string, signal?: AbortSignal): Promise<{ action: string; topic: string | null }> => {
     const chatCompletion = await withTimeout(
         groq.chat.completions.create({
             model: MODEL,
@@ -50,7 +50,7 @@ export const classifyIntent = async (query: string): Promise<{ action: string; t
             temperature: 0,
             max_completion_tokens: 64,
             response_format: { type: 'json_object' },
-        }),
+        }, { signal }),
         LLM_TIMEOUT_MS
     );
 
@@ -64,7 +64,7 @@ export const classifyIntent = async (query: string): Promise<{ action: string; t
     }
 };
 
-export const generateSummary = async (topic: string, llmObservation: string): Promise<string> => {
+export const generateSummary = async (topic: string, llmObservation: string, signal?: AbortSignal): Promise<string> => {
     let summary = `Here are the latest articles on ${topic}.`;
     const summaryPrompt = `You are an expert news anchor. Based ONLY on the following article headlines and descriptions, write a conversational, 2-sentence summary of the current events. Do not use external knowledge.\n\n${llmObservation}`;
 
@@ -75,7 +75,7 @@ export const generateSummary = async (topic: string, llmObservation: string): Pr
                 messages: [{ role: 'user', content: summaryPrompt }],
                 temperature: 0.3,
                 max_completion_tokens: 150,
-            }),
+            }, { signal }),
             LLM_TIMEOUT_MS
         );
         return summaryCompletion.choices[0]?.message?.content || summary;
@@ -136,7 +136,7 @@ const inferCategoryFromKeywords = (topic: string, summary: string, llmObservatio
     return bestCategory;
 };
 
-export const classifyNewsCategory = async (topic: string, summary: string, llmObservation: string): Promise<AiNewsCategory> => {
+export const classifyNewsCategory = async (topic: string, summary: string, llmObservation: string, signal?: AbortSignal): Promise<AiNewsCategory> => {
     const fallbackCategory = inferCategoryFromKeywords(topic, summary, llmObservation);
 
     try {
@@ -152,7 +152,7 @@ export const classifyNewsCategory = async (topic: string, summary: string, llmOb
                 temperature: 0,
                 max_completion_tokens: 32,
                 response_format: { type: 'json_object' }
-            }),
+            }, { signal }),
             LLM_TIMEOUT_MS
         );
 

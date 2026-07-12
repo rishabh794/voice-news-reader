@@ -7,16 +7,7 @@ import { classifyIntent, generateSummary, classifyNewsCategory } from '../servic
 export const handleStreamSearch = async (req: AuthRequest, res: Response): Promise<void> => {
     const { query } = req.query;
 
-    if (!req.user) {
-        res.status(401).json({ error: 'User not authenticated.' });
-        return;
-    }
-    
-    if (!query || typeof query !== 'string') {
-        res.status(400).json({ error: 'Missing or invalid query parameter' });
-        return;
-    }
-
+    // Always set SSE headers first so all responses use SSE format
     res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -28,9 +19,25 @@ export const handleStreamSearch = async (req: AuthRequest, res: Response): Promi
         res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
 
+    if (!req.user) {
+        sendEvent('error', { message: 'User not authenticated.' });
+        res.end();
+        return;
+    }
+    
+    if (!query || typeof query !== 'string') {
+        sendEvent('error', { message: 'Missing or invalid query parameter' });
+        res.end();
+        return;
+    }
+
+    const abortController = new AbortController();
+    const { signal } = abortController;
     let aborted = false;
+
     req.on('close', () => {
         aborted = true;
+        abortController.abort();
     });
 
     // Heartbeat every 15s to keep connection alive
@@ -40,7 +47,7 @@ export const handleStreamSearch = async (req: AuthRequest, res: Response): Promi
 
     try {
         // Stage 1: Intent classification
-        const intent = await classifyIntent(query);
+        const intent = await classifyIntent(query, signal);
         if (aborted) return;
         sendEvent('intent', intent);
 
@@ -52,7 +59,7 @@ export const handleStreamSearch = async (req: AuthRequest, res: Response): Promi
         const topic = intent.topic.trim();
 
         // Stage 2: Fetch articles
-        const { rawArticles, llmObservation } = await searchGNews(topic);
+        const { rawArticles, llmObservation } = await searchGNews(topic, signal);
         if (aborted) return;
         
         sendEvent('articles', { articles: rawArticles, count: rawArticles.length });
@@ -63,12 +70,12 @@ export const handleStreamSearch = async (req: AuthRequest, res: Response): Promi
         }
 
         // Stage 3: Summarize
-        const summary = await generateSummary(topic, llmObservation);
+        const summary = await generateSummary(topic, llmObservation, signal);
         if (aborted) return;
         sendEvent('summary', { text: summary });
 
         // Stage 4: Categorize
-        const category = await classifyNewsCategory(topic, summary, llmObservation);
+        const category = await classifyNewsCategory(topic, summary, llmObservation, signal);
         if (aborted) return;
         sendEvent('category', { category });
 

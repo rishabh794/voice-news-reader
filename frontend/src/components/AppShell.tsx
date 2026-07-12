@@ -1,5 +1,6 @@
-import { useContext, useState, type ReactNode } from 'react';
+import { useContext, useState, useEffect, type ReactNode } from 'react';
 import { AuthContext } from '../context/auth-context';
+import { useToast } from '../hooks/useToast';
 import Sidebar from './ui/Sidebar';
 import TopBar from './ui/TopBar';
 
@@ -11,7 +12,17 @@ const AppShell = ({ children }: AppShellProps) => {
     const authContext = useContext(AuthContext);
     const isAuthenticated = Boolean(authContext?.isAuthenticated);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const { showToast } = useToast();
 
+    // Listen for rate-limit events dispatched by the Axios interceptor
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const detail = (e as CustomEvent).detail;
+            showToast(detail?.message || 'Too many requests. Please wait.', 'error');
+        };
+        window.addEventListener('api:ratelimit', handler);
+        return () => window.removeEventListener('api:ratelimit', handler);
+    }, [showToast]);
     return (
         <div className="min-h-screen bg-base text-text">
             {isAuthenticated && (

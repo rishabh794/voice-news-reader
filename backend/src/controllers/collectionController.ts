@@ -79,16 +79,12 @@ export const deleteCollection = async (req: AuthRequest, res: Response): Promise
             return res.status(400).json({ error: 'Cannot delete the default collection' });
         }
         
+        const { SavedArticle } = await import('../models/SavedArticle.js');
+        // Cascade delete all articles inside this collection
+        await SavedArticle.deleteMany({ userId, collectionId: id as string });
+        
+        // Delete the collection itself
         await Collection.deleteOne({ _id: id });
-        // Let's move them to the default collection.
-        const defaultCollection = await Collection.findOne({ userId, isDefault: true });
-        if (defaultCollection) {
-            const { SavedArticle } = await import('../models/SavedArticle.js');
-            await SavedArticle.updateMany(
-                { userId, collectionId: id as string },
-                { $set: { collectionId: defaultCollection._id } }
-            );
-        }
         
         return res.json({ message: 'Collection deleted' });
     } catch (error) {

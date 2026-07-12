@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, type FormEvent } fro
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
-import { deleteSavedArticle, fetchSavedArticles, requestIntent, saveArticle } from '../services/api';
+import { deleteSavedArticle, fetchSavedArticles, saveArticle } from '../services/api';
 import useAudioPlayer from '../hooks/useAudioPlayer';
 import { useToast } from '../hooks/useToast';
 import { isGibberish } from '../services/isGibberish';
@@ -64,7 +64,6 @@ const Dashboard = () => {
 
     const lastHandledPayload = useRef<string | null>(null);
     const lastHandledRouteQuery = useRef<string | null>(null);
-    const latestSearchRequestId = useRef(0);
     const isMountedRef = useRef(true);
     const location = useLocation();
     const navigate = useNavigate();

@@ -1,57 +1,39 @@
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
+import { takeToken } from '../services/redis.js';
 
-interface GlobalTokenBucket {
-    tokens: number;
-    lastRefill: number;
+interface QuotaConfig {
     capacity: number;
     refillRate: number;
 }
 
-const GLOBAL_QUOTAS = {
-    // 100 req/day = ~4.16/hour. I'll configure to allow a slight burst but strict hourly cap.
+const GLOBAL_QUOTAS: Record<string, QuotaConfig> = {
+    // 100 req/day = ~4.16/hour. Allow a slight burst but strict hourly cap.
     gnews: { capacity: 80, refillRate: 80 / 3600 },
     groq: { capacity: 200, refillRate: 200 / 3600 }
 };
 
-const globalBuckets = new Map<string, GlobalTokenBucket>();
-
-for (const [resource, quota] of Object.entries(GLOBAL_QUOTAS)) {
-    globalBuckets.set(resource, {
-        tokens: quota.capacity,
-        lastRefill: Date.now(),
-        capacity: quota.capacity,
-        refillRate: quota.refillRate
-    });
-}
-
-const refillBucket = (bucket: GlobalTokenBucket): void => {
-    const now = Date.now();
-    const timePassedSeconds = (now - bucket.lastRefill) / 1000;
-    const tokensToAdd = timePassedSeconds * bucket.refillRate;
-    
-    bucket.tokens = Math.min(bucket.capacity, bucket.tokens + tokensToAdd);
-    bucket.lastRefill = now;
-};
-
 export const globalQuota = (api: 'gnews' | 'groq'): RequestHandler => {
-    return (req: Request, res: Response, next: NextFunction): void => {
-        const bucket = globalBuckets.get(api);
+    const config = GLOBAL_QUOTAS[api];
 
-        if (!bucket) {
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        if (!config) {
             next();
             return;
         }
 
-        refillBucket(bucket);
+        const key = `global:quota:${api}`;
+        const result = await takeToken(key, config.capacity, config.refillRate);
 
-        if (bucket.tokens >= 1) {
-            bucket.tokens -= 1;
+        if (!result) {
+            // Fail-open: Redis is down or script failed
+            next();
+            return;
+        }
+
+        if (result.allowed) {
             next();
         } else {
-            // Calculate retry-after
-            const tokensNeeded = 1 - bucket.tokens;
-            const retryAfter = Math.ceil(tokensNeeded / bucket.refillRate);
-
+            const retryAfter = Math.ceil((1 - result.remaining) / config.refillRate);
             res.set('Retry-After', String(retryAfter));
             res.status(429).json({
                 error: `Global API quota exceeded for ${api}. Please try again later.`,

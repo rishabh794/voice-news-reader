@@ -5,12 +5,38 @@ import axios from 'axios';
 import { SavedArticle } from '../models/SavedArticle.js';
 import mongoose from 'mongoose';
 
+const BLOCKED_HOSTNAMES = new Set(['localhost', '127.0.0.1', '0.0.0.0', '169.254.169.254', '[::1]']);
+
+const isPrivateHostname = (hostname: string): boolean => {
+    if (BLOCKED_HOSTNAMES.has(hostname)) return true;
+    if (hostname.endsWith('.local') || hostname.endsWith('.internal')) return true;
+    // Private IP ranges: 10.x.x.x, 192.168.x.x, 172.16-31.x.x
+    if (/^10\./.test(hostname)) return true;
+    if (/^192\.168\./.test(hostname)) return true;
+    if (/^172\.(1[6-9]|2\d|3[01])\./.test(hostname)) return true;
+    return false;
+};
+
+const isAllowedUrl = (urlString: string): boolean => {
+    try {
+        const parsed = new URL(urlString);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+        return !isPrivateHostname(parsed.hostname);
+    } catch {
+        return false;
+    }
+};
+
 export const parseArticle = async (req: Request, res: Response): Promise<any> => {
     try {
         const { url, savedArticleId } = req.query;
 
         if (!url || typeof url !== 'string') {
             return res.status(400).json({ error: 'Article URL is required' });
+        }
+
+        if (!isAllowedUrl(url)) {
+            return res.status(400).json({ error: 'Invalid or disallowed URL' });
         }
 
         // Check cache first if savedArticleId is provided

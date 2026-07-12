@@ -81,6 +81,7 @@ export const useSSESearch = (callbacks?: SSESearchCallbacks) => {
         let localIntent: { action: string; topic: string } | null = null;
         let localArticles: Article[] = [];
         let localSummary = '';
+        let completeFired = false;
 
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
@@ -173,6 +174,7 @@ export const useSSESearch = (callbacks?: SSESearchCallbacks) => {
                                     dispatch({ type: 'EVENT_CATEGORY', payload: data });
                                     break;
                                 case 'complete':
+                                    completeFired = true;
                                     dispatch({ type: 'EVENT_COMPLETE' });
                                     callbacks?.onComplete?.({ intent: localIntent, articles: localArticles, summary: localSummary });
                                     break;
@@ -196,8 +198,10 @@ export const useSSESearch = (callbacks?: SSESearchCallbacks) => {
         } finally {
             if (abortControllerRef.current?.signal === signal) {
                 abortControllerRef.current = null;
-                // If we get here and it's still streaming, ensure we mark complete
-                dispatch({ type: 'EVENT_COMPLETE' });
+                // Only dispatch if we haven't already fired complete
+                if (!completeFired) {
+                    dispatch({ type: 'EVENT_COMPLETE' });
+                }
             }
         }
     }, []);

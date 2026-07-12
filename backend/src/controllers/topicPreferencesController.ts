@@ -1,13 +1,14 @@
 import type { Response } from 'express';
 import type { AuthRequest } from '../middleware/authMiddleware.js';
 import { User } from '../models/User.js';
+import { AI_NEWS_CATEGORIES } from '../utils/historyCategories.js';
 
 export const getTopics = async (req: AuthRequest, res: Response): Promise<any> => {
     try {
         if (!req.user) {
             return res.status(401).json({ error: 'User not authenticated' });
         }
-        
+
         const user = await User.findById(req.user.id).lean();
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
@@ -27,8 +28,16 @@ export const updateTopics = async (req: AuthRequest, res: Response): Promise<any
         }
 
         const { topics } = req.body;
-        // Deduplicate topics just in case
-        const uniqueTopics = [...new Set(topics)];
+
+        if (!Array.isArray(topics)) {
+            return res.status(400).json({ error: 'Topics must be an array' });
+        }
+
+        // Filter to only allowed categories and deduplicate
+        const validTopics = topics.filter(
+            (t: unknown): t is string => typeof t === 'string' && (AI_NEWS_CATEGORIES as readonly string[]).includes(t)
+        );
+        const uniqueTopics = [...new Set(validTopics)];
 
         const updatedUser = await User.findByIdAndUpdate(
             req.user.id,

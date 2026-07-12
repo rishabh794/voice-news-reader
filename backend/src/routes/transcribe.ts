@@ -1,16 +1,22 @@
 import express, { type Request, type Response } from 'express';
 import multer from 'multer';
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import Groq from 'groq-sdk';
 import { verifyToken } from '../middleware/authMiddleware.ts';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 
 const router = express.Router();
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const TRANSCRIBE_TIMEOUT_MS = 25000;
 
-fs.mkdirSync('uploads', { recursive: true });
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ dest: UPLOADS_DIR, limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB max
 
 const safeUnlink = async (path: string) => {
     try {

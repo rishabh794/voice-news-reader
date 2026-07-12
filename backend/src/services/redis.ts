@@ -1,23 +1,24 @@
-import { createClient } from 'redis';
+import { Redis } from 'ioredis';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-let redisClient: ReturnType<typeof createClient> | null = null;
+let redisClient: Redis | null = null;
 
 if (process.env.REDIS_URL) {
-    redisClient = createClient({ 
-        url: process.env.REDIS_URL,
-        socket: {
-            connectTimeout: 20000,
-            reconnectStrategy: (retries) => {
-                if (retries > 10) return new Error('Retry timeout');
-                return 2000;
-            }
+    // ioredis is highly robust out-of-the-box for serverless Redis environments like Upstash
+    redisClient = new Redis(process.env.REDIS_URL, {
+        maxRetriesPerRequest: null,
+        commandTimeout: 5000, // Prevent hanging forever on dead sockets
+        keepAlive: 10000, // TCP keepalive
+        enableOfflineQueue: false, // Fail immediately if disconnected so the app can fail-open
+        retryStrategy: (times) => {
+            if (times > 20) return null;
+            return Math.min(times * 500, 5000);
         }
     });
+
     redisClient.on('error', (err) => console.error('Redis Client Error', err));
-    redisClient.connect().catch(console.error);
 } else {
     console.warn('REDIS_URL not set. Redis features will act as a no-op.');
 }
@@ -75,20 +76,21 @@ export const takeToken = async (
     capacity: number,
     refillRate: number
 ): Promise<TokenBucketResult | null> => {
-    if (!redisClient?.isReady) {
+    if (!redisClient || redisClient.status !== 'ready') {
         // Fail-open if Redis is down
         return null;
     }
 
     try {
         const now = Date.now();
-        // eval command takes: script, { keys: [key], arguments: [args] } in node-redis v4
+        // ioredis eval takes: script, numKeys, key1, ..., arg1, ...
         const result = await redisClient.eval(
             TOKEN_BUCKET_SCRIPT,
-            {
-                keys: [key],
-                arguments: [capacity.toString(), refillRate.toString(), now.toString()]
-            }
+            1,
+            key,
+            capacity.toString(),
+            refillRate.toString(),
+            now.toString()
         ) as [number, string];
 
         const allowed = result[0] === 1;

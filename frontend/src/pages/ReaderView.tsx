@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchReaderContent, updateSavedArticle } from '../services/api';
@@ -6,6 +6,7 @@ import Loader from '../components/Loader';
 import Button from '../components/ui/Button';
 import SectionContainer from '../components/ui/SectionContainer';
 import useAudioPlayer from '../hooks/useAudioPlayer';
+import DOMPurify from 'dompurify';
 
 const ReaderView = () => {
     const [searchParams] = useSearchParams();
@@ -28,8 +29,11 @@ const ReaderView = () => {
         }
     });
 
+    const hasMarkedReadRef = useRef(false);
+
     useEffect(() => {
-        if (id && readerQuery.data && !markAsReadMutation.isPending && !markAsReadMutation.isSuccess) {
+        if (id && readerQuery.data && !hasMarkedReadRef.current) {
+            hasMarkedReadRef.current = true;
             // Auto mark as read when successfully opened in reader
             markAsReadMutation.mutate();
         }
@@ -84,7 +88,7 @@ const ReaderView = () => {
                     <div className="flex items-center justify-center gap-4 text-muted text-sm">
                         {article.byline && <span>By {article.byline}</span>}
                         {article.byline && article.length && <span>&bull;</span>}
-                        {article.length && <span>{Math.ceil(article.length / 1000)} min read</span>}
+                        {article.length && <span>{Math.ceil(article.length / 1250)} min read</span>}
                     </div>
                 )}
             </header>
@@ -117,7 +121,7 @@ const ReaderView = () => {
 
             <article 
                 className="prose prose-invert prose-lg max-w-none text-text leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: article.content }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(article.content) }}
             />
         </SectionContainer>
     );
