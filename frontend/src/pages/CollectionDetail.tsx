@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchCollections, fetchSavedArticles, deleteSavedArticle, updateSavedArticle } from '../services/api';
+import { fetchCollections, fetchSavedArticles, deleteSavedArticle } from '../services/api';
 import Loader from '../components/Loader';
 import NewsCard from '../components/NewsCard';
 import EmptyState from '../components/ui/EmptyState';
-import PageHeader from '../components/ui/PageHeader';
+
 import SectionContainer from '../components/ui/SectionContainer';
 import Button from '../components/ui/Button';
 import Icon from '../components/ui/Icon';

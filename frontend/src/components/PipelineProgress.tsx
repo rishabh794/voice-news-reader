@@ -1,5 +1,5 @@
 import type { PipelineStage } from '../hooks/useSSESearch';
-import Badge from './ui/Badge';
+
 
 interface PipelineProgressProps {
     stage: PipelineStage;
@@ -13,7 +13,7 @@ const PipelineProgress = ({ stage, intentTopic, articleCount, category }: Pipeli
         return null;
     }
 
-    const getStatus = (targetStage: string, index: number) => {
+    const getStatus = (index: number) => {
         const stages = ['connecting', 'intent', 'articles', 'summary', 'category'];
         const currentIndex = stages.indexOf(stage);
         
@@ -60,28 +60,28 @@ const PipelineProgress = ({ stage, intentTopic, articleCount, category }: Pipeli
             
             <div className="flex flex-col gap-3">
                 {renderItem(
-                    getStatus(stage, 1), 
+                    getStatus(1), 
                     'Detecting intent...', 
                     `Intent detected: "${intentTopic}"`, 
                     'Detecting intent'
                 )}
                 
                 {renderItem(
-                    getStatus(stage, 2), 
+                    getStatus(2), 
                     'Fetching latest articles...', 
                     `${articleCount} articles fetched`, 
                     'Fetching articles'
                 )}
                 
                 {renderItem(
-                    getStatus(stage, 3), 
+                    getStatus(3), 
                     'Synthesizing summary...', 
                     'Summary generated', 
                     'Synthesizing summary'
                 )}
                 
                 {renderItem(
-                    getStatus(stage, 4), 
+                    getStatus(4), 
                     'Classifying topic...', 
                     `Categorized as ${category}`, 
                     'Classifying topic'

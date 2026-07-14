@@ -6,3 +6,4 @@ export * from './transcribe';
 export * from './topicPreferences';
 export * from './collections';
 export * from './reader';
+export * from './briefing';

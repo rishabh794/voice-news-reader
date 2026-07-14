@@ -11,6 +11,8 @@ import History from './pages/History';
 import SavedArticles from './pages/SavedArticles';
 import CollectionDetail from './pages/CollectionDetail';
 import ReaderView from './pages/ReaderView';
+import BriefingPage from './pages/Briefing';
+import BriefingDetail from './pages/BriefingDetail';
 
 function App() {
   return (
@@ -59,6 +61,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <ReaderView />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/briefing"
+            element={
+              <ProtectedRoute>
+                <BriefingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/briefing/:id"
+            element={
+              <ProtectedRoute>
+                <BriefingDetail />
               </ProtectedRoute>
             }
           />

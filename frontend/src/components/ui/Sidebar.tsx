@@ -17,6 +17,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     const authItems = [
         { label: 'Home', to: '/' },
         { label: 'Dashboard', to: '/dashboard' },
+        { label: 'Briefing', to: '/briefing' },
         { label: 'History', to: '/history' },
         { label: 'Saved', to: '/saved' }
     ];
