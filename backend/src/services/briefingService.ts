@@ -155,6 +155,7 @@ export const generateUserBriefing = async (userId: string): Promise<typeof Brief
     const date = getTodayDateISO();
 
     // Build sections for each topic (articles should already be cached from prefetch)
+    await prefetchAllTopics(topics);
     const sectionPromises = topics.map(topic => buildSection(topic));
     const sectionResults = await Promise.allSettled(sectionPromises);
 

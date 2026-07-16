@@ -25,6 +25,10 @@ export const verifyQStashSignature = async (
     next: NextFunction
 ): Promise<void> => {
     if (!receiver) {
+        if (process.env.NODE_ENV === 'production') {
+            res.status(500).json({ error: 'QStash not configured' });
+            return;
+        }
         // In development without QStash keys, allow through
         console.warn('[QStash] No receiver configured — skipping signature verification.');
         next();
@@ -41,7 +45,7 @@ export const verifyQStashSignature = async (
 
         // QStash sends the raw body, which Express has already parsed.
         // We need to reconstruct it for verification.
-        const body = JSON.stringify(req.body) || '';
+        const body = req.rawBody?.toString('utf8') ?? '';
 
         const isValid = await receiver.verify({
             signature,
