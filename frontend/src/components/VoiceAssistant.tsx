@@ -41,12 +41,20 @@ const VoiceAssistant = () => {
     const session = useVoiceSession();
 
     useEffect(() => {
-        // Load setting from localStorage
-        const setting = localStorage.getItem('voice_use_vad');
-        if (setting === 'false') setUseVad(false);
+        const loadSetting = () => {
+            const setting = localStorage.getItem('voice_use_vad');
+            setUseVad(setting !== 'false');
+        };
+
+        // Initial load
+        loadSetting();
+
+        // Listen for setting changes
+        window.addEventListener('voice_settings_changed', loadSetting);
 
         isMountedRef.current = true;
         return () => {
+            window.removeEventListener('voice_settings_changed', loadSetting);
             isMountedRef.current = false;
             cleanupAudio();
             if (abortControllerRef.current) {
@@ -221,14 +229,46 @@ const VoiceAssistant = () => {
         },
         positiveSpeechThreshold: 0.8,
         negativeSpeechThreshold: 0.3,
+        baseAssetPath: '/',
+        onnxWASMBasePath: '/',
     });
 
-    const handleMicTapVAD = () => {
+    const handleMicTapVAD = async () => {
+        console.log('Mic tapped!', { listening: vad.listening, loading: vad.loading, errored: vad.errored, vadInstance: !!vad });
+        if (vad.errored) {
+            console.error('VAD is in an errored state:', vad.errored);
+            const errMsg = typeof vad.errored === 'string' ? vad.errored : (vad.errored as any).message || String(vad.errored);
+            showToast(`VAD Error: ${errMsg}`, 'error');
+            return;
+        }
+        
         if (vad.listening) {
+            cancelInFlight();
+            console.log('Pausing VAD...');
             vad.pause();
         } else {
             cancelInFlight();
-            vad.start();
+            console.log('Requesting mic permissions and starting VAD...');
+            try {
+                // Pre-request permissions to ensure browser prompts the user
+                const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                tempStream.getTracks().forEach(t => t.stop()); // Stop immediately, just wanted permission
+                
+                console.log('Permissions granted, calling vad.toggle()...');
+                vad.toggle(); // or vad.start()
+                
+                // Add a failsafe timeout to check if it actually started
+                setTimeout(() => {
+                    if (!vad.listening) {
+                        console.warn('VAD toggle was called but listening state is still false after 1s!');
+                        // Try forcing start
+                        vad.start();
+                    }
+                }, 1000);
+            } catch (err) {
+                console.error('Failed to start microphone or toggle VAD:', err);
+                showToast('Failed to start microphone. Please check permissions.', 'error');
+            }
         }
     };
 
@@ -261,6 +301,7 @@ const VoiceAssistant = () => {
             }
         } catch (error) {
             console.error("Microphone access denied or failed:", error);
+            showToast('Failed to start microphone. Please check permissions.', 'error');
         }
     };
 

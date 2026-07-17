@@ -90,6 +90,42 @@ const BriefingSettings = () => {
                 </label>
             </div>
 
+            <h3 className="text-lg font-display text-text mt-10 mb-2">Voice Assistant Settings</h3>
+            <p className="text-sm text-muted mb-6">
+                Configure how the microphone button behaves.
+            </p>
+            
+            <div className="space-y-6">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                    <div className="relative flex items-center mt-0.5">
+                        <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={localStorage.getItem('voice_use_vad') !== 'false'}
+                            onChange={(e) => {
+                                const useVad = e.target.checked;
+                                localStorage.setItem('voice_use_vad', useVad ? 'true' : 'false');
+                                window.dispatchEvent(new Event('voice_settings_changed'));
+                                // Force re-render of this component just for the toggle
+                                setEnabled(prev => !prev);
+                                setTimeout(() => setEnabled(prev => !prev), 0);
+                            }}
+                        />
+                        <div className={`w-11 h-6 rounded-full transition-colors ${localStorage.getItem('voice_use_vad') !== 'false' ? 'bg-primary' : 'bg-elevated'}`}>
+                            <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${localStorage.getItem('voice_use_vad') !== 'false' ? 'translate-x-5' : 'translate-x-0'}`} />
+                        </div>
+                    </div>
+                    <div>
+                        <div className="text-[15px] font-medium text-text group-hover:text-primary transition-colors">
+                            Auto-Detect Speech (VAD)
+                        </div>
+                        <div className="text-sm text-muted mt-1">
+                            When enabled, tap once to start and it will automatically stop when you finish speaking. When disabled, you must press and hold the button.
+                        </div>
+                    </div>
+                </label>
+            </div>
+
             <div className="mt-8 pt-6 border-t border-border/70 flex justify-end">
                 <Button
                     variant="primary"

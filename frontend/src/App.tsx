@@ -1,7 +1,9 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import AppShell from './components/AppShell';
-import VoiceAssistant from './components/VoiceAssistant';
+
+const VoiceAssistant = lazy(() => import('./components/VoiceAssistant'));
 
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -21,7 +23,9 @@ function App() {
     <Router>
       <VoiceSessionProvider>
         <AppShell>
-          <VoiceAssistant />
+          <Suspense fallback={null}>
+            <VoiceAssistant />
+          </Suspense>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />

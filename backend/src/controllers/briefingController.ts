@@ -3,7 +3,7 @@ import type { AuthRequest } from '../middleware/authMiddleware.js';
 import type { Request } from 'express';
 import { User } from '../models/User.js';
 import { Briefing } from '../models/Briefing.js';
-import { generateUserBriefing, generateAllBriefings } from '../services/briefingService.js';
+import { generateUserBriefing, generateAllBriefings, getTodayDateISO } from '../services/briefingService.js';
 
 /**
  * GET /api/briefing/latest
@@ -15,10 +15,10 @@ export const getLatestBriefing = async (req: AuthRequest, res: Response): Promis
             return res.status(401).json({ error: 'User not authenticated' });
         }
 
-        const briefing = await Briefing.findOne({ userId: req.user.id })
-            .sort({ createdAt: -1 })
-            .lean();
-
+        const briefing = await Briefing.findOne({
+            userId: req.user.id,
+            date: getTodayDateISO()
+        })
         if (!briefing) {
             return res.json({ briefing: null });
         }

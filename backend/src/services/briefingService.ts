@@ -131,7 +131,7 @@ const composeBriefingScript = (sections: BriefingSection[]): string => {
 /**
  * Get today's date as an ISO string (YYYY-MM-DD) in UTC.
  */
-const getTodayDateISO = (): string => {
+export const getTodayDateISO = (): string => {
     return new Date().toISOString().slice(0, 10);
 };
 
