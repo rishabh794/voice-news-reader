@@ -102,11 +102,6 @@ const VoiceAssistant = () => {
             }
 
             // LEVEL 1: CLIENT-SIDE KEYWORD ROUTING
-            if (spokenText.match(/stop|pause|quiet|shut up/)) {
-                window.speechSynthesis.cancel();
-                return;
-            }
-
             if (spokenText.includes('history')) {
                 navigate('/history');
                 return;
@@ -131,6 +126,24 @@ const VoiceAssistant = () => {
             if (session.articles.length > 0) {
                 const currentIndex = session.currentArticleIndex ?? 0;
                 
+                // Save (moved before Next to prevent "save next" triggering Next)
+                if (spokenText.includes('save this') || spokenText.includes('save it') || spokenText.includes('save')) {
+                    const article = session.articles[currentIndex];
+                    if (article) {
+                        try {
+                            const saved = await saveArticle(article);
+                            queryClient.setQueryData(['saved-articles'], (prev: any = []) => {
+                                if (prev.some((a: any) => a._id === saved._id)) return prev;
+                                return [...prev, saved];
+                            });
+                            showToast('Article saved.', 'success');
+                        } catch (e) {
+                            showToast('Failed to save article.', 'error');
+                        }
+                    }
+                    return;
+                }
+
                 // Next / Previous / Skip
                 if (spokenText.match(/\b(next|skip)\b/)) {
                     if (currentIndex < session.articles.length - 1) {
@@ -176,23 +189,7 @@ const VoiceAssistant = () => {
                     return;
                 }
 
-                // Save
-                if (spokenText.includes('save this') || spokenText.includes('save it')) {
-                    const article = session.articles[currentIndex];
-                    if (article) {
-                        try {
-                            const saved = await saveArticle(article);
-                            queryClient.setQueryData(['saved-articles'], (prev: any = []) => {
-                                if (prev.some((a: any) => a._id === saved._id)) return prev;
-                                return [...prev, saved];
-                            });
-                            showToast('Article saved.', 'success');
-                        } catch (e) {
-                            showToast('Failed to save article.', 'error');
-                        }
-                    }
-                    return;
-                }
+
 
                 // Read this / Open it
                 if (spokenText.match(/\b(read this|open it|read it)\b/)) {

@@ -6,13 +6,15 @@ interface FeedArticleGridProps {
     savedArticleIdsByUrl: Record<string, string>;
     onToggleSave: (article: Article) => void;
     pendingSaveByUrl: Record<string, boolean>;
+    currentArticleIndex?: number | null;
 }
 
 const FeedArticleGrid = ({
     articles,
     savedArticleIdsByUrl,
     onToggleSave,
-    pendingSaveByUrl
+    pendingSaveByUrl,
+    currentArticleIndex = null
 }: FeedArticleGridProps) => {
     return (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-5">
@@ -23,6 +25,7 @@ const FeedArticleGrid = ({
                     isSaved={Boolean(savedArticleIdsByUrl[article.url])}
                     onToggleSave={onToggleSave}
                     saveDisabled={Boolean(article.url && pendingSaveByUrl[article.url])}
+                    highlighted={currentArticleIndex === index}
                 />
             ))}
         </div>

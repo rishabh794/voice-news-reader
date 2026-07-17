@@ -15,7 +15,6 @@ export interface VoiceSessionState {
     currentArticleIndex: number | null;
     conversationHistory: ConversationTurn[];
     summary: string;
-    isSpeaking: boolean;
     readerState: ReaderState;
 }
 
@@ -32,17 +31,32 @@ const initialState: VoiceSessionState = {
     currentArticleIndex: null,
     conversationHistory: [],
     summary: '',
-    isSpeaking: false,
     readerState: 'idle'
 };
 
 export const VoiceSessionContext = createContext<VoiceSessionContextValue | undefined>(undefined);
 
 export const VoiceSessionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [state, setState] = useState<VoiceSessionState>(initialState);
+    const [state, setState] = useState<VoiceSessionState>(() => {
+        const savedIndexStr = sessionStorage.getItem('voice_current_article_index');
+        const savedIndex = savedIndexStr ? parseInt(savedIndexStr, 10) : null;
+        return {
+            ...initialState,
+            currentArticleIndex: isNaN(savedIndex as any) ? null : savedIndex
+        };
+    });
 
     const setSessionState = useCallback((newState: Partial<VoiceSessionState>) => {
-        setState(prev => ({ ...prev, ...newState }));
+        setState(prev => {
+            if (newState.currentArticleIndex !== undefined) {
+                if (newState.currentArticleIndex === null) {
+                    sessionStorage.removeItem('voice_current_article_index');
+                } else {
+                    sessionStorage.setItem('voice_current_article_index', newState.currentArticleIndex.toString());
+                }
+            }
+            return { ...prev, ...newState };
+        });
     }, []);
 
     const clearSession = useCallback(() => {

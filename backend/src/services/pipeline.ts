@@ -35,7 +35,8 @@ Rules for "action":
 - Use "unknown" if the request is completely unrelated to searching news or viewing history.
 
 Rules for "topic":
-- If action is "search" or "refine", extract the core subject (e.g., "Elon Musk", "Tesla"). Combine the previous topic context if necessary for refinement. Ignore conversational filler.
+- If action is "search", extract the core subject (e.g., "Elon Musk", "Tesla"). Ignore conversational filler.
+- If action is "refine", generate a NEW, distinct search query that combines the previous topic context with the user's new request (e.g., if previous topic was "Apple" and user says "more about their cars", topic should be "Apple car project"). Do NOT just return the exact same previous topic.
 - If action is "history" or "unknown", set topic to null.
 
 Respond ONLY with pure JSON. Do not include markdown formatting or explanations.`;

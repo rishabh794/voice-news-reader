@@ -101,12 +101,6 @@ export const VoiceCommandDrawer: React.FC = () => {
                     '"go back" · "go to history"'
                 ]} 
             />
-            <CommandSection 
-                icon={<Pause className="w-4 h-4" />} 
-                title="Playback" 
-                available={context.isSpeaking}
-                examples={['"stop" · "pause"']} 
-            />
         </div>
     );
 };

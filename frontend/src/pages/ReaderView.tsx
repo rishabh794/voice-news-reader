@@ -44,7 +44,18 @@ const ReaderView = () => {
         return () => stop();
     }, [stop]);
 
-    const { updateReaderState } = useVoiceSession();
+    const { updateReaderState, articles, setSessionState } = useVoiceSession();
+
+    useEffect(() => {
+        if (url && articles.length > 0) {
+            const index = articles.findIndex(a => a.url === url);
+            if (index !== -1) {
+                setSessionState({ currentArticleIndex: index });
+            }
+        }
+    }, [url, articles, setSessionState]);
+
+
 
     useEffect(() => {
         if (readerQuery.isSuccess && readerQuery.data) {

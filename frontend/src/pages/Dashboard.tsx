@@ -46,7 +46,7 @@ const EMPTY_SAVED_ARTICLES: SavedArticle[] = [];
 
 const Dashboard = () => {
     // Search State
-    const { topic, summary, articles, setSessionState } = useVoiceSession();
+    const { topic, summary, articles, currentArticleIndex, setSessionState } = useVoiceSession();
     
     // We map the global 'topic' to the local 'query' concept
     const query = topic || '';
@@ -179,7 +179,7 @@ const Dashboard = () => {
                 'Stored dashboard articles are invalid.'
             );
             setQuery(savedQuery);
-            setArticles(parsedCachedArticles);
+            setSessionState({ articles: parsedCachedArticles });
             setSummary(savedSummary);
             setShowSummary(Boolean(savedSummary));
             setError('');
@@ -317,9 +317,12 @@ const Dashboard = () => {
             return;
         }
 
-        if (restoreDashboardFromSession(routeQuery)) {
-            lastHandledPayload.current = `cache:${routeQuery}`;
-            return;
+        const savedQuery = sessionStorage.getItem('dashboard_query') || '';
+        if (savedQuery.trim().toLowerCase() === normalizedRouteQuery) {
+            if (restoreDashboardFromSession(routeQuery)) {
+                lastHandledPayload.current = `cache:${routeQuery}`;
+                return;
+            }
         }
 
         setQuery(routeQuery);
@@ -517,6 +520,7 @@ const Dashboard = () => {
                             savedArticleIdsByUrl={savedArticleIdsByUrl}
                             onToggleSave={handleToggleSave}
                             pendingSaveByUrl={pendingSaveByUrl}
+                            currentArticleIndex={currentArticleIndex}
                         />
                     </div>
                 )
