@@ -9,7 +9,7 @@ import { isGibberish } from '../services/isGibberish';
 import { useTopicPreferences } from '../hooks/useTopicPreferences';
 import { usePersonalizedFeed } from '../hooks/usePersonalizedFeed';
 import { useSSESearch } from '../hooks/useSSESearch';
-
+import { useVoiceSession } from '../features/voice-session/useVoiceSession';
 import SearchBar from '../components/ui/SearchBar';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -46,10 +46,16 @@ const EMPTY_SAVED_ARTICLES: SavedArticle[] = [];
 
 const Dashboard = () => {
     // Search State
-    const [query, setQuery] = useState('');
-    const [summary, setSummary] = useState('');
+    const { topic, summary, articles, setSessionState } = useVoiceSession();
+    
+    // We map the global 'topic' to the local 'query' concept
+    const query = topic || '';
+    
+    const setQuery = useCallback((q: string) => setSessionState({ topic: q }), [setSessionState]);
+    const setSummary = useCallback((s: string) => setSessionState({ summary: s }), [setSessionState]);
+    const setArticles = useCallback((a: Article[]) => setSessionState({ articles: a, currentArticleIndex: null }), [setSessionState]);
+
     const [showSummary, setShowSummary] = useState(false);
-    const [articles, setArticles] = useState<Article[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -276,8 +282,8 @@ const Dashboard = () => {
             setError('');
         }
 
-        startSearch(normalizedSearchQuery);
-    }, [startSearch, showToast, stopAudio]);
+        startSearch(normalizedSearchQuery, { previous_topic: topic });
+    }, [startSearch, showToast, stopAudio, topic]);
 
     const handleManualSearch = (e: FormEvent) => {
         e.preventDefault();

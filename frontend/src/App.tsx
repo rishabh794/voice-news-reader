@@ -14,11 +14,14 @@ import ReaderView from './pages/ReaderView';
 import BriefingPage from './pages/Briefing';
 import BriefingDetail from './pages/BriefingDetail';
 
+import { VoiceSessionProvider } from './features/voice-session/VoiceSessionContext';
+
 function App() {
   return (
     <Router>
-      <AppShell>
-        <VoiceAssistant />
+      <VoiceSessionProvider>
+        <AppShell>
+          <VoiceAssistant />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
@@ -81,7 +84,8 @@ function App() {
             }
           />
         </Routes>
-      </AppShell>
+        </AppShell>
+      </VoiceSessionProvider>
     </Router>
   );
 }

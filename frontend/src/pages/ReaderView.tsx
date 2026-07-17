@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 import SectionContainer from '../components/ui/SectionContainer';
 import useAudioPlayer from '../hooks/useAudioPlayer';
 import DOMPurify from 'dompurify';
+import { useVoiceSession } from '../features/voice-session/useVoiceSession';
 
 const ReaderView = () => {
     const [searchParams] = useSearchParams();
@@ -42,6 +43,17 @@ const ReaderView = () => {
     useEffect(() => {
         return () => stop();
     }, [stop]);
+
+    const { updateReaderState } = useVoiceSession();
+
+    useEffect(() => {
+        if (readerQuery.isSuccess && readerQuery.data) {
+            updateReaderState('success');
+        } else if (readerQuery.isError) {
+            updateReaderState('failed');
+        }
+        return () => updateReaderState('idle');
+    }, [readerQuery.isSuccess, readerQuery.isError, readerQuery.data, updateReaderState]);
 
     const article = readerQuery.data;
 

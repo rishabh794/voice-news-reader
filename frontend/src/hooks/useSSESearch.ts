@@ -77,7 +77,7 @@ export const useSSESearch = (callbacks?: SSESearchCallbacks) => {
         callbacks?.onComplete?.({ intent: null, articles: [], summary: '' });
     }, [callbacks]);
 
-    const startSearch = useCallback(async (query: string) => {
+    const startSearch = useCallback(async (query: string, context?: { previous_topic?: string | null }) => {
         let localIntent: { action: string; topic: string } | null = null;
         let localArticles: Article[] = [];
         let localSummary = '';
@@ -93,7 +93,10 @@ export const useSSESearch = (callbacks?: SSESearchCallbacks) => {
         dispatch({ type: 'START' });
 
         const token = localStorage.getItem('token');
-        const url = `http://localhost:5000/api/stream/search?query=${encodeURIComponent(query)}`;
+        let url = `http://localhost:5000/api/stream/search?query=${encodeURIComponent(query)}`;
+        if (context) {
+            url += `&context=${encodeURIComponent(JSON.stringify(context))}`;
+        }
 
         try {
             const response = await fetch(url, {
