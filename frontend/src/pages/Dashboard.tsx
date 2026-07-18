@@ -86,11 +86,14 @@ const Dashboard = () => {
 
     const sse = useSSESearch({
         onIntent: (intent) => {
-            setQuery(intent.topic);
-            setSummary('');
-            setShowSummary(false);
-            setArticles([]);
-            setError('');
+            // Only wipe the screen if we are actually starting a new search
+            if (intent.action === 'search' || intent.action === 'refine') {
+                setQuery(intent.topic || '');
+                setSummary('');
+                setShowSummary(false);
+                setArticles([]);
+                setError('');
+            }
         },
         onArticles: (fetchedArticles) => {
             setArticles(fetchedArticles);
@@ -430,6 +433,17 @@ const Dashboard = () => {
             <PageHeader
                 title="Dashboard"
                 subtitle={isSearchActive ? "Search the latest briefings and listen to the summarized results." : "Your personalized daily news feed."}
+                action={isSearchActive && (
+                    <Button 
+                        type="button" 
+                        variant="ghost" 
+                        onClick={clearSearch}
+                        className="flex items-center gap-2 text-primary hover:text-primary hover:bg-primary/10 px-3 py-2"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                        <span className="font-medium">Back to Feed</span>
+                    </Button>
+                )}
             />
 
             <div id="search">
@@ -465,6 +479,7 @@ const Dashboard = () => {
                 <PipelineProgress 
                     stage={sse.stage} 
                     intentTopic={sse.intent?.topic || null} 
+                    optimizedQuery={sse.optimizedQuery}
                     articleCount={sse.articles.length} 
                     category={sse.category} 
                 />

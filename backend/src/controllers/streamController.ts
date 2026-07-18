@@ -2,7 +2,7 @@ import type { Response } from 'express';
 import type { AuthRequest } from '../middleware/authMiddleware.js';
 import { searchGNews } from '../services/tools.js';
 import { History } from '../models/History.js';
-import { classifyIntent, generateSummary, classifyNewsCategory } from '../services/pipeline.js';
+import { classifyIntent, generateSummary, classifyNewsCategory, rewriteForGNews } from '../services/pipeline.js';
 
 export const handleStreamSearch = async (req: AuthRequest, res: Response): Promise<void> => {
     const { query, context: contextRaw } = req.query;
@@ -33,7 +33,7 @@ export const handleStreamSearch = async (req: AuthRequest, res: Response): Promi
         res.end();
         return;
     }
-    
+
     if (!query || typeof query !== 'string') {
         sendEvent('error', { message: 'Missing or invalid query parameter' });
         res.end();
@@ -67,10 +67,15 @@ export const handleStreamSearch = async (req: AuthRequest, res: Response): Promi
 
         const topic = intent.topic.trim();
 
-        // Stage 2: Fetch articles
-        const { rawArticles, llmObservation } = await searchGNews(topic, signal);
+        // Stage 1.5: Optimize query for GNews
+        const optimizedQuery = await rewriteForGNews(topic, signal);
         if (aborted) return;
-        
+        sendEvent('query_optimized', { original: topic, optimized: optimizedQuery });
+
+        // Stage 2: Fetch articles using the optimized query
+        const { rawArticles, llmObservation } = await searchGNews(optimizedQuery, signal);
+        if (aborted) return;
+
         sendEvent('articles', { articles: rawArticles, count: rawArticles.length });
 
         if (rawArticles.length === 0) {
@@ -97,7 +102,7 @@ export const handleStreamSearch = async (req: AuthRequest, res: Response): Promi
             articles: rawArticles,
         });
         await historyRecord.save();
-        
+
         sendEvent('complete', { historyId: historyRecord._id });
     } catch (error: unknown) {
         console.error('SSE Pipeline error:', error);

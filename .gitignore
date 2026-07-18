@@ -2,3 +2,9 @@ node_modules/
 .env
 dist/
 build/
+
+# VAD model assets (copied from node_modules via postinstall)
+frontend/public/*.onnx
+frontend/public/*.wasm
+frontend/public/*.mjs
+frontend/public/vad.worklet.bundle.min.js
