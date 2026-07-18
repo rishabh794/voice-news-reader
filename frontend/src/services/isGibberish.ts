@@ -19,7 +19,7 @@ const tokenize = (input: string): string[] => {
         .filter(Boolean);
 };
 
-const FILLER_WORDS = new Set(['uhh', 'umm', 'um', 'uh', 'ok', 'okay', 'yes', 'ah', 'hm', 'hmm', 'like']);
+const FILLER_WORDS = new Set(['uhh', 'umm', 'um', 'uh', 'ok', 'okay', 'yes', 'ah', 'hm', 'hmm', 'like', 'the', 'a', 'an', 'and', 'but', 'or', 'be', 'to', 'by', 'for', 'from', 'with', 'on', 'at', 'in', 'of', 'basically', 'actually', 'literally', 'anyway', 'say', 'something', 'open']);
 
 const hasVowelLikeSound = (token: string): boolean => /[aeiouy]/i.test(token);
 

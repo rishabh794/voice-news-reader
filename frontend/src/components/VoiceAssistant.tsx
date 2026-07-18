@@ -242,26 +242,12 @@ const VoiceAssistant = () => {
         if (vad.listening) {
             cancelInFlight();
             console.log('Pausing VAD...');
-            vad.pause();
+            await vad.pause();
         } else {
             cancelInFlight();
-            console.log('Requesting mic permissions and starting VAD...');
+            console.log('Starting VAD...');
             try {
-                // Pre-request permissions to ensure browser prompts the user
-                const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                tempStream.getTracks().forEach(t => t.stop()); // Stop immediately, just wanted permission
-                
-                console.log('Permissions granted, calling vad.toggle()...');
-                vad.toggle(); // or vad.start()
-                
-                // Add a failsafe timeout to check if it actually started
-                setTimeout(() => {
-                    if (!vad.listening) {
-                        console.warn('VAD toggle was called but listening state is still false after 1s!');
-                        // Try forcing start
-                        vad.start();
-                    }
-                }, 1000);
+                await vad.toggle();
             } catch (err) {
                 console.error('Failed to start microphone or toggle VAD:', err);
                 showToast('Failed to start microphone. Please check permissions.', 'error');
