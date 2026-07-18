@@ -4,17 +4,18 @@ import type { PipelineStage } from '../hooks/useSSESearch';
 interface PipelineProgressProps {
     stage: PipelineStage;
     intentTopic: string | null;
+    optimizedQuery?: string;
     articleCount: number;
     category: string;
 }
 
-const PipelineProgress = ({ stage, intentTopic, articleCount, category }: PipelineProgressProps) => {
+const PipelineProgress = ({ stage, intentTopic, optimizedQuery, articleCount, category }: PipelineProgressProps) => {
     if (stage === 'idle' || stage === 'complete' || stage === 'error') {
         return null;
     }
 
     const getStatus = (index: number) => {
-        const stages = ['connecting', 'intent', 'articles', 'summary', 'category'];
+        const stages = ['connecting', 'intent', 'query_optimized', 'articles', 'summary', 'category'];
         const currentIndex = stages.indexOf(stage);
         
         if (currentIndex > index) return 'done';
@@ -65,23 +66,30 @@ const PipelineProgress = ({ stage, intentTopic, articleCount, category }: Pipeli
                     `Intent detected: "${intentTopic}"`, 
                     'Detecting intent'
                 )}
+
+                {renderItem(
+                    getStatus(2),
+                    'Optimizing search query...',
+                    `Query optimized: ${optimizedQuery || intentTopic}`,
+                    'Optimizing query'
+                )}
                 
                 {renderItem(
-                    getStatus(2), 
+                    getStatus(3), 
                     'Fetching latest articles...', 
                     `${articleCount} articles fetched`, 
                     'Fetching articles'
                 )}
                 
                 {renderItem(
-                    getStatus(3), 
+                    getStatus(4), 
                     'Synthesizing summary...', 
                     'Summary generated', 
                     'Synthesizing summary'
                 )}
                 
                 {renderItem(
-                    getStatus(4), 
+                    getStatus(5), 
                     'Classifying topic...', 
                     `Categorized as ${category}`, 
                     'Classifying topic'

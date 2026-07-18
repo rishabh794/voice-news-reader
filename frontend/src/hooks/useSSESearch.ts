@@ -1,7 +1,7 @@
 import { useReducer, useCallback, useRef } from 'react';
 import type { Article } from '../types/news';
 
-export type PipelineStage = 'idle' | 'connecting' | 'intent' | 'articles' | 'summary' | 'category' | 'complete' | 'error';
+export type PipelineStage = 'idle' | 'connecting' | 'intent' | 'query_optimized' | 'articles' | 'summary' | 'category' | 'complete' | 'error';
 
 interface SSESearchState {
     stage: PipelineStage;
@@ -11,6 +11,7 @@ interface SSESearchState {
     category: string;
     error: string;
     isStreaming: boolean;
+    optimizedQuery: string;
 }
 
 const initialState: SSESearchState = {
@@ -20,12 +21,14 @@ const initialState: SSESearchState = {
     summary: '',
     category: '',
     error: '',
-    isStreaming: false
+    isStreaming: false,
+    optimizedQuery: ''
 };
 
 type Action =
     | { type: 'START' }
     | { type: 'EVENT_INTENT'; payload: { action: string; topic: string } }
+    | { type: 'EVENT_QUERY_OPTIMIZED'; payload: { original: string; optimized: string } }
     | { type: 'EVENT_ARTICLES'; payload: { articles: Article[] } }
     | { type: 'EVENT_SUMMARY'; payload: { text: string } }
     | { type: 'EVENT_CATEGORY'; payload: { category: string } }
@@ -39,6 +42,8 @@ function reducer(state: SSESearchState, action: Action): SSESearchState {
             return { ...initialState, stage: 'connecting', isStreaming: true };
         case 'EVENT_INTENT':
             return { ...state, stage: 'intent', intent: action.payload };
+        case 'EVENT_QUERY_OPTIMIZED':
+            return { ...state, stage: 'query_optimized', optimizedQuery: action.payload.optimized };
         case 'EVENT_ARTICLES':
             return { ...state, stage: 'articles', articles: action.payload.articles };
         case 'EVENT_SUMMARY':
@@ -58,6 +63,7 @@ function reducer(state: SSESearchState, action: Action): SSESearchState {
 
 export interface SSESearchCallbacks {
     onIntent?: (intent: { action: string; topic: string }) => void;
+    onQueryOptimized?: (data: { original: string; optimized: string }) => void;
     onArticles?: (articles: Article[]) => void;
     onSummary?: (summary: string) => void;
     onError?: (error: string) => void;
@@ -162,6 +168,10 @@ export const useSSESearch = (callbacks?: SSESearchCallbacks) => {
                                     localIntent = data;
                                     dispatch({ type: 'EVENT_INTENT', payload: data });
                                     callbacks?.onIntent?.(data);
+                                    break;
+                                case 'query_optimized':
+                                    dispatch({ type: 'EVENT_QUERY_OPTIMIZED', payload: data });
+                                    callbacks?.onQueryOptimized?.(data);
                                     break;
                                 case 'articles':
                                     localArticles = data.articles;

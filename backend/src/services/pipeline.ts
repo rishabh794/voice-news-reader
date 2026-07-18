@@ -29,17 +29,67 @@ Analyze the user's input and extract their intent.
 Always return a valid JSON object with EXACTLY two keys: "action" and "topic".
 
 Rules for "action":
+- Use "read" if the user wants to read, listen to, or open the current/selected article (e.g. "read this article", "open it", "play the audio").
+- Use "next" if the user wants to skip to the next article or move forward (e.g. "next one", "skip", "move on").
+- Use "save" if the user wants to save or bookmark the current article (e.g. "save this", "bookmark it").
 - Use "history" if the user wants to see their past searches, old queries, or search history.
 - Use "search" if the user is asking for news, articles, or information about a topic.
-- Use "refine" if the user's query is a follow-up to their previous search (e.g., "what about Tesla?" after searching for "electric vehicles").
-- Use "unknown" if the request is completely unrelated to searching news or viewing history.
+- Use "refine" if the user's query is a follow-up asking for more information on the SAME topic or a variation (e.g., "more about this topic", "what about Tesla?" after searching for "electric vehicles").
+- Use "unknown" if the request is completely unrelated.
 
 Rules for "topic":
 - If action is "search", extract the core subject (e.g., "Elon Musk", "Tesla"). Ignore conversational filler.
-- If action is "refine", generate a NEW, distinct search query that combines the previous topic context with the user's new request (e.g., if previous topic was "Apple" and user says "more about their cars", topic should be "Apple car project"). Do NOT just return the exact same previous topic.
-- If action is "history" or "unknown", set topic to null.
+- If action is "refine", return the combined new search query (e.g., if previous topic was "Apple" and user says "more about their cars", topic should be "Apple car project"). If the user simply asks for "more about this topic" or "tell me more", just return the exact previous topic.
+- If action is "read", "next", "save", "history", or "unknown", set topic to null.
 
 Respond ONLY with pure JSON. Do not include markdown formatting or explanations.`;
+
+const REWRITE_SYSTEM_PROMPT = `You convert a news search topic into an optimized query for the GNews search API.
+
+GNews supports: AND (default between words), OR, NOT, "exact phrase"
+Max query length: 200 characters.
+
+Rules:
+1. Extract the CORE ENTITY (person, org, event name) and wrap in "quotes" for phrase match
+2. Add related synonyms/terms with OR for broader recall
+3. Remove filler words (latest, happening, concerns, update, news about)
+4. Keep it SHORT — 2-5 key terms, not full sentences
+5. Any OR group combined with AND must be wrapped in parentheses — GNews's OR operator binds tighter than AND, so writing \`X AND A OR B\` will actually be parsed as \`(X AND A) OR B\`, not what you want.
+6. Return ONLY the query string, nothing else
+
+Examples:
+- Topic: "Russia-Ukraine peace talks" → "Russia Ukraine" AND (peace OR ceasefire OR negotiations)
+- Topic: "AI impact on healthcare" → "artificial intelligence" AND healthcare  
+- Topic: "inflation concerns" → inflation
+- Topic: "Tesla quarterly earnings report" → Tesla AND (earnings OR revenue OR quarterly)
+- Topic: "Boeing whistleblower" → Boeing AND whistleblower`;
+
+export const rewriteForGNews = async (topic: string, signal?: AbortSignal): Promise<string> => {
+    try {
+        const completion = await withTimeout(
+            groq.chat.completions.create({
+                model: MODEL,
+                messages: [
+                    { role: 'system', content: REWRITE_SYSTEM_PROMPT },
+                    { role: 'user', content: `Topic: "${topic}"` }
+                ],
+                temperature: 0,
+                max_completion_tokens: 64,
+            }, { signal }),
+            LLM_TIMEOUT_MS
+        );
+        
+        const content = completion.choices[0]?.message?.content?.trim();
+        // Remove quotes if the LLM wrapped the entire response in them
+        if (content && content.startsWith('"') && content.endsWith('"') && content.match(/"/g)?.length === 2) {
+            return content.slice(1, -1);
+        }
+        return content || topic;
+    } catch (error) {
+        console.error('Query rewrite error:', error);
+        return topic; // fallback to original topic
+    }
+};
 
 export const classifyIntent = async (
     query: string,

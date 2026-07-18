@@ -2,7 +2,7 @@ import type { Response } from 'express';
 import { searchGNews } from '../services/tools.js';
 import { History } from '../models/History.js';
 import type { AuthRequest } from '../middleware/authMiddleware.js';
-import { classifyIntent, generateSummary, classifyNewsCategory } from '../services/pipeline.js';
+import { classifyIntent, generateSummary, classifyNewsCategory, rewriteForGNews } from '../services/pipeline.js';
 
 export const handleIntent = async (req: AuthRequest, res: Response): Promise<any> => {
     const { query } = req.body as { query: string };
@@ -18,7 +18,10 @@ export const handleIntent = async (req: AuthRequest, res: Response): Promise<any
             const topic = aiResponse.topic.trim();
             console.log(`\nAGENT TRIGGERED: Fetching articles for "${topic}"...`);
 
-            const { rawArticles, llmObservation } = await searchGNews(topic);
+            const optimizedQuery = await rewriteForGNews(topic);
+            console.log(`[Intent Search] Rewritten query: "${optimizedQuery}"`);
+
+            const { rawArticles, llmObservation } = await searchGNews(optimizedQuery);
 
             if (rawArticles.length === 0) {
                 return res.json({
