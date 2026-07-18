@@ -31,21 +31,35 @@ Always return a valid JSON object with EXACTLY two keys: "action" and "topic".
 Rules for "action":
 - Use "history" if the user wants to see their past searches, old queries, or search history.
 - Use "search" if the user is asking for news, articles, or information about a topic.
+- Use "refine" if the user's query is a follow-up to their previous search (e.g., "what about Tesla?" after searching for "electric vehicles").
 - Use "unknown" if the request is completely unrelated to searching news or viewing history.
 
 Rules for "topic":
-- If action is "search", extract the core subject (e.g., "Elon Musk", "quantum computing"). Ignore conversational filler.
+- If action is "search", extract the core subject (e.g., "Elon Musk", "Tesla"). Ignore conversational filler.
+- If action is "refine", generate a NEW, distinct search query that combines the previous topic context with the user's new request (e.g., if previous topic was "Apple" and user says "more about their cars", topic should be "Apple car project"). Do NOT just return the exact same previous topic.
 - If action is "history" or "unknown", set topic to null.
 
 Respond ONLY with pure JSON. Do not include markdown formatting or explanations.`;
 
-export const classifyIntent = async (query: string, signal?: AbortSignal): Promise<{ action: string; topic: string | null }> => {
+export const classifyIntent = async (
+    query: string,
+    signal?: AbortSignal,
+    context?: { previous_topic?: string | null; conversation_history?: any[] }
+): Promise<{ action: string; topic: string | null }> => {
+    let userContent = `Query: "${query}"`;
+    if (context?.previous_topic) {
+        userContent += `\nPrevious Topic: "${context.previous_topic}"`;
+    }
+    if (context?.conversation_history && context.conversation_history.length > 0) {
+        userContent += `\nRecent History: ${JSON.stringify(context.conversation_history)}`;
+    }
+
     const chatCompletion = await withTimeout(
         groq.chat.completions.create({
             model: MODEL,
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
-                { role: 'user', content: query },
+                { role: 'user', content: userContent },
             ],
             temperature: 0,
             max_completion_tokens: 64,

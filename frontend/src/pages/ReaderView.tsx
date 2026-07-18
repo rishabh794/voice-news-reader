@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchReaderContent, updateSavedArticle } from '../services/api';
@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 import SectionContainer from '../components/ui/SectionContainer';
 import useAudioPlayer from '../hooks/useAudioPlayer';
 import DOMPurify from 'dompurify';
+import { useVoiceSession } from '../features/voice-session/useVoiceSession';
 
 const ReaderView = () => {
     const [searchParams] = useSearchParams();
@@ -42,6 +43,28 @@ const ReaderView = () => {
     useEffect(() => {
         return () => stop();
     }, [stop]);
+
+    const { updateReaderState, articles, setSessionState } = useVoiceSession();
+
+    useEffect(() => {
+        if (url && articles.length > 0) {
+            const index = articles.findIndex(a => a.url === url);
+            if (index !== -1) {
+                setSessionState({ currentArticleIndex: index });
+            }
+        }
+    }, [url, articles, setSessionState]);
+
+
+
+    useEffect(() => {
+        if (readerQuery.isSuccess && readerQuery.data) {
+            updateReaderState('success');
+        } else if (readerQuery.isError) {
+            updateReaderState('failed');
+        }
+        return () => updateReaderState('idle');
+    }, [readerQuery.isSuccess, readerQuery.isError, readerQuery.data, updateReaderState]);
 
     const article = readerQuery.data;
 

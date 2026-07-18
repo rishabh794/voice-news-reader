@@ -10,7 +10,7 @@ export async function searchGNews(query: string, signal?: AbortSignal) {
         throw new Error(`GNews returned unexpected response format for query: "${query}"`);
     }
 
-    const llmText = articles.map((a: any) => `${a.title}: ${a.description}`).join('\n\n');
+    const llmText = articles.map((a: { title: string, description: string }) => `${a.title}: ${a.description}`).join('\n\n');
 
     return {
         rawArticles: articles,

@@ -70,3 +70,26 @@ export interface PersonalizedFeed {
     hasTopics: boolean;
     topics: TopicCategory[];
 }
+
+export interface BriefingPreferences {
+    enabled: boolean;
+    emailEnabled: boolean;
+}
+
+export interface BriefingSection {
+    topic: TopicCategory;
+    summary: string;
+    articles: Article[];
+}
+
+export interface Briefing {
+    _id: string;
+    userId: string;
+    date: string;
+    topics: TopicCategory[];
+    script: string;
+    sections: BriefingSection[];
+    emailSentAt?: string | null;
+    createdAt: string;
+    updatedAt: string;
+}

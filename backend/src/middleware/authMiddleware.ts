@@ -13,20 +13,23 @@ export const verifyToken = (
     req: AuthRequest,
     res: Response,
     next: NextFunction
-): any => {
+): void => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        return res.status(401).json({ error: "Access denied. No token provided." });
+        res.status(401).json({ error: "Access denied. No token provided." });
+        return;
     }
 
     const token = authHeader.split(" ")[1];
     if (!token) {
-        return res.status(401).json({ error: "Access denied. No token provided." });
+        res.status(401).json({ error: "Access denied. No token provided." });
+        return;
     }
 
     if (!process.env.JWT_SECRET) {
-        return res.status(500).json({ error: "JWT secret not configured." });
+        res.status(500).json({ error: "JWT secret not configured." });
+        return;
     }
 
     try {
@@ -34,6 +37,7 @@ export const verifyToken = (
         req.user = decoded;
         next();
     } catch (error) {
-        return res.status(403).json({ error: "Invalid or expired token." });
+        res.status(403).json({ error: "Invalid or expired token." });
+        return;
     }
 };

@@ -8,11 +8,12 @@ interface NewsCardProps {
     isSaved?: boolean;
     onToggleSave?: (article: Article) => void;
     saveDisabled?: boolean;
+    highlighted?: boolean;
 }
 
-const NewsCard = ({ article, isSaved = false, onToggleSave, saveDisabled = false }: NewsCardProps) => {
+const NewsCard = ({ article, isSaved = false, onToggleSave, saveDisabled = false, highlighted = false }: NewsCardProps) => {
     return (
-        <Card className="group relative flex h-full flex-col overflow-hidden transition-colors duration-150 hover:border-border-strong">
+        <Card className={`group relative flex h-full flex-col overflow-hidden transition-colors duration-150 hover:border-border-strong ${highlighted ? 'ring-2 ring-primary border-primary' : ''}`}>
             {onToggleSave && (
                 <Button
                     type="button"

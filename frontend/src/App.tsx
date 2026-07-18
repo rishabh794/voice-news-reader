@@ -1,7 +1,9 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import AppShell from './components/AppShell';
-import VoiceAssistant from './components/VoiceAssistant';
+
+const VoiceAssistant = lazy(() => import('./components/VoiceAssistant'));
 
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -11,12 +13,19 @@ import History from './pages/History';
 import SavedArticles from './pages/SavedArticles';
 import CollectionDetail from './pages/CollectionDetail';
 import ReaderView from './pages/ReaderView';
+import BriefingPage from './pages/Briefing';
+import BriefingDetail from './pages/BriefingDetail';
+
+import { VoiceSessionProvider } from './features/voice-session/VoiceSessionContext';
 
 function App() {
   return (
     <Router>
-      <AppShell>
-        <VoiceAssistant />
+      <VoiceSessionProvider>
+        <AppShell>
+          <Suspense fallback={null}>
+            <VoiceAssistant />
+          </Suspense>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
@@ -62,8 +71,25 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/briefing"
+            element={
+              <ProtectedRoute>
+                <BriefingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/briefing/:id"
+            element={
+              <ProtectedRoute>
+                <BriefingDetail />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
-      </AppShell>
+        </AppShell>
+      </VoiceSessionProvider>
     </Router>
   );
 }

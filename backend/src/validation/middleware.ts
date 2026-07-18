@@ -57,7 +57,11 @@ export const validateRequest = ({ body, params, query }: ValidationSchemas) => (
                 }))
             );
         } else {
-            req.query = parsedQuery.data as Request['query'];
+            const currentQuery = req.query as Record<string, any>;
+            for (const key of Object.keys(currentQuery)) {
+                delete currentQuery[key];
+            }
+            Object.assign(currentQuery, parsedQuery.data);
         }
     }
 

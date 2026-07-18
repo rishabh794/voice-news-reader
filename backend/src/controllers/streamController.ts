@@ -5,7 +5,16 @@ import { History } from '../models/History.js';
 import { classifyIntent, generateSummary, classifyNewsCategory } from '../services/pipeline.js';
 
 export const handleStreamSearch = async (req: AuthRequest, res: Response): Promise<void> => {
-    const { query } = req.query;
+    const { query, context: contextRaw } = req.query;
+
+    let parsedContext = undefined;
+    if (typeof contextRaw === 'string') {
+        try {
+            parsedContext = JSON.parse(contextRaw);
+        } catch (e) {
+            console.warn('Failed to parse context', e);
+        }
+    }
 
     // Always set SSE headers first so all responses use SSE format
     res.writeHead(200, {
@@ -47,11 +56,11 @@ export const handleStreamSearch = async (req: AuthRequest, res: Response): Promi
 
     try {
         // Stage 1: Intent classification
-        const intent = await classifyIntent(query, signal);
+        const intent = await classifyIntent(query as string, signal, parsedContext);
         if (aborted) return;
         sendEvent('intent', intent);
 
-        if (intent.action !== 'search' || !intent.topic) {
+        if ((intent.action !== 'search' && intent.action !== 'refine') || !intent.topic) {
             sendEvent('complete', {});
             return;
         }

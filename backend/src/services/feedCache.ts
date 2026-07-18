@@ -12,7 +12,7 @@ export const feedCache = {
         return null;
     },
     
-    async set(key: string, data: any, ttlSeconds: number): Promise<void> {
+    async set(key: string, data: unknown, ttlSeconds: number): Promise<void> {
         if (!redisClient || redisClient.status !== 'ready') return;
         try {
             await redisClient.setex(key, ttlSeconds, JSON.stringify(data));

@@ -9,6 +9,14 @@ const authProvidersSchema = new mongoose.Schema(
     { _id: false }
 );
 
+const briefingPreferencesSchema = new mongoose.Schema(
+    {
+        enabled: { type: Boolean, default: false },
+        emailEnabled: { type: Boolean, default: false }
+    },
+    { _id: false }
+);
+
 const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: false },
@@ -22,6 +30,10 @@ const userSchema = new mongoose.Schema({
             validator: (v: string[]) => v.length <= 8,
             message: 'Maximum 8 topics allowed'
         }
+    },
+    briefingPreferences: {
+        type: briefingPreferencesSchema,
+        default: () => ({ enabled: false, emailEnabled: false })
     }
 });
 

@@ -19,6 +19,8 @@ const tokenize = (input: string): string[] => {
         .filter(Boolean);
 };
 
+const FILLER_WORDS = new Set(['uhh', 'umm', 'um', 'uh', 'ok', 'okay', 'yes', 'ah', 'hm', 'hmm', 'like', 'the', 'a', 'an', 'and', 'but', 'or', 'be', 'to', 'by', 'for', 'from', 'with', 'on', 'at', 'in', 'of', 'basically', 'actually', 'literally', 'anyway', 'say', 'something', 'open']);
+
 const hasVowelLikeSound = (token: string): boolean => /[aeiouy]/i.test(token);
 
 export const isGibberish = (input: string): boolean => {
@@ -37,6 +39,9 @@ export const isGibberish = (input: string): boolean => {
 
     const letterTokens = tokens.filter((token) => /[a-z]/.test(token));
     if (letterTokens.length === 0) return false;
+
+    const nonFillerTokens = letterTokens.filter(t => !FILLER_WORDS.has(t));
+    if (nonFillerTokens.length === 0) return true; // All words were filler/gibberish
 
     if (tokens.length === 1) {
         const [singleToken] = tokens;
