@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Compass, Bookmark, Pause, X, ChevronUp } from 'lucide-react';
+import { Search, Compass, Bookmark, X, ChevronUp } from 'lucide-react';
 import { useVoiceSession } from './useVoiceSession';
 
 interface CommandSectionProps {

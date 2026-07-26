@@ -1,8 +1,8 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import { verifyToken } from '../middleware/authMiddleware.ts';
-import { handleIntent } from '../controllers/intentController.ts';
-import { intentSchemas, validateRequest } from '../validation/index.ts';
+import { verifyToken } from '../middleware/authMiddleware.js';
+import { handleIntent } from '../controllers/intentController.js';
+import { intentSchemas, validateRequest } from '../validation/index.js';
 
 import { rateLimit } from '../middleware/rateLimiter.js';
 import { globalQuota } from '../middleware/globalQuota.js';

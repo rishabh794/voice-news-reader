@@ -1,15 +1,15 @@
 import express from 'express';
-import authRoutes from './auth.ts'; 
-import historyRoutes from './history.ts';
-import intentRoutes from './intent.ts';
-import transcribeRoutes from './transcribe.ts';
-import savedArticlesRoutes from './savedArticles.ts';
-import topicPreferencesRoutes from './topicPreferences.ts';
-import feedRoutes from './feed.ts';
-import collectionsRoutes from './collections.ts';
-import readerRoutes from './reader.ts';
-import streamRoutes from './stream.ts';
-import briefingRoutes from './briefing.ts';
+import authRoutes from './auth.js'; 
+import historyRoutes from './history.js';
+import intentRoutes from './intent.js';
+import transcribeRoutes from './transcribe.js';
+import savedArticlesRoutes from './savedArticles.js';
+import topicPreferencesRoutes from './topicPreferences.js';
+import feedRoutes from './feed.js';
+import collectionsRoutes from './collections.js';
+import readerRoutes from './reader.js';
+import streamRoutes from './stream.js';
+import briefingRoutes from './briefing.js';
 
 const router = express.Router();
 

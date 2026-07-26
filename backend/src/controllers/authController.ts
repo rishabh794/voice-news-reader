@@ -198,4 +198,4 @@ export const logout = async (req: Request, res: Response): Promise<any> => {
         sameSite: 'lax'
     });
     res.json({ message: 'Logged out successfully' });
-};
+};

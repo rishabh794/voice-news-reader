@@ -1,8 +1,8 @@
-export { validateRequest } from './middleware.ts';
+export { validateRequest } from './middleware.js';
 
-export * as authSchemas from './schemas/authSchemas.ts';
-export * as historySchemas from './schemas/historySchemas.ts';
-export * as intentSchemas from './schemas/intentSchemas.ts';
-export * as savedArticleSchemas from './schemas/savedArticleSchemas.ts';
-export * as topicPreferencesSchemas from './schemas/topicPreferencesSchemas.ts';
-export * as briefingSchemas from './schemas/briefingSchemas.ts';
+export * as authSchemas from './schemas/authSchemas.js';
+export * as historySchemas from './schemas/historySchemas.js';
+export * as intentSchemas from './schemas/intentSchemas.js';
+export * as savedArticleSchemas from './schemas/savedArticleSchemas.js';
+export * as topicPreferencesSchemas from './schemas/topicPreferencesSchemas.js';
+export * as briefingSchemas from './schemas/briefingSchemas.js';

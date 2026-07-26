@@ -1,8 +1,8 @@
 import express from 'express';
-import { register, login, googleAuth, me, logout } from '../controllers/authController.ts';
-import { authSchemas, validateRequest } from '../validation/index.ts';
+import { register, login, googleAuth, me, logout } from '../controllers/authController.js';
+import { authSchemas, validateRequest } from '../validation/index.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
-import { verifyToken } from '../middleware/authMiddleware.ts';
+import { verifyToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 

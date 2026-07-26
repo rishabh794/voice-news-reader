@@ -2,8 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
-import { connectDB } from './db.ts';
-import mainRouter from './routes/api.ts';
+import { connectDB } from './db.js';
+import mainRouter from './routes/api.js';
 
 dotenv.config();
 
@@ -17,7 +17,10 @@ declare global {
     }
 }
 
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+app.use(cors({ 
+    origin: ['http://localhost:5173', 'https://voxnews.site', 'https://api.voxnews.site'], 
+    credentials: true 
+}));
 app.use(cookieParser());
 app.use(express.json({ 
     limit: '1mb',

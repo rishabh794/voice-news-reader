@@ -3,7 +3,7 @@ import { Briefing } from '../models/Briefing.js';
 import { searchGNews } from './tools.js';
 import { feedCache } from './feedCache.js';
 import { generateSummary } from './pipeline.js';
-import { sendBriefingEmail } from './emailService.ts';
+import { sendBriefingEmail } from './emailService.js';
 
 const ARTICLES_PER_TOPIC = 3;
 const BRIEFING_CACHE_TTL_SECONDS = 10 * 60 * 60; // 10 hours (same as feed cache)

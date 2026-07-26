@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { renderBriefingEmail } from './emailTemplates.ts';
+import { renderBriefingEmail } from './emailTemplates.js';
 import dotenv from 'dotenv';
 
 dotenv.config();

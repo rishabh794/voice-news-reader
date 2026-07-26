@@ -1,7 +1,7 @@
 import express from 'express';
-import { getTopics, updateTopics } from '../controllers/topicPreferencesController.ts';
-import { verifyToken } from '../middleware/authMiddleware.ts';
-import { topicPreferencesSchemas, validateRequest } from '../validation/index.ts';
+import { getTopics, updateTopics } from '../controllers/topicPreferencesController.js';
+import { verifyToken } from '../middleware/authMiddleware.js';
+import { topicPreferencesSchemas, validateRequest } from '../validation/index.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
 
 const router = express.Router();

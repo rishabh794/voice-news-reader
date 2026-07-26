@@ -1,7 +1,7 @@
 import express from 'express';
-import { clearHistory, deleteHistory, getHistory } from '../controllers/historyController.ts';
-import { verifyToken } from '../middleware/authMiddleware.ts';
-import { historySchemas, validateRequest } from '../validation/index.ts';
+import { clearHistory, deleteHistory, getHistory } from '../controllers/historyController.js';
+import { verifyToken } from '../middleware/authMiddleware.js';
+import { historySchemas, validateRequest } from '../validation/index.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
 
 const router = express.Router();

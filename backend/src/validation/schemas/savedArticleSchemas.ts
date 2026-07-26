@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { objectIdSchema } from './commonSchemas.ts';
+import { objectIdSchema } from './commonSchemas.js';
 
 const toOptionalTrimmedString = (value: unknown): unknown => {
     if (typeof value !== 'string') return value;

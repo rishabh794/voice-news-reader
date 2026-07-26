@@ -1,7 +1,7 @@
 import express from 'express';
-import { addSavedArticle, getSavedArticles, deleteSavedArticle, updateSavedArticle } from '../controllers/savedArticleController.ts';
-import { verifyToken } from '../middleware/authMiddleware.ts';
-import { savedArticleSchemas, validateRequest } from '../validation/index.ts';
+import { addSavedArticle, getSavedArticles, deleteSavedArticle, updateSavedArticle } from '../controllers/savedArticleController.js';
+import { verifyToken } from '../middleware/authMiddleware.js';
+import { savedArticleSchemas, validateRequest } from '../validation/index.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
 
 const router = express.Router();

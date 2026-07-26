@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { objectIdSchema } from './commonSchemas.ts';
+import { objectIdSchema } from './commonSchemas.js';
 
 export const deleteHistoryParamsSchema = z.object({
     historyId: objectIdSchema

@@ -1,6 +1,6 @@
 import express from 'express';
-import { getPersonalizedFeed } from '../controllers/feedController.ts';
-import { verifyToken } from '../middleware/authMiddleware.ts';
+import { getPersonalizedFeed } from '../controllers/feedController.js';
+import { verifyToken } from '../middleware/authMiddleware.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
 import { globalQuota } from '../middleware/globalQuota.js';
 

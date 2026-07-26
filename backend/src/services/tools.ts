@@ -16,4 +16,4 @@ export async function searchGNews(query: string, signal?: AbortSignal) {
         rawArticles: articles,
         llmObservation: llmText || "No articles found."
     };
-}
+}
