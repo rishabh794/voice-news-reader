@@ -37,7 +37,7 @@ const AppShell = ({ children }: AppShellProps) => {
                     isSidebarOpen={isSidebarOpen}
                     onSidebarToggle={() => setIsSidebarOpen((prev) => !prev)}
                 />
-                <main className="py-8">
+                <main className="py-4 sm:py-8 pb-24 sm:pb-8">
                     {children}
                 </main>
             </div>

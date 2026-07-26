@@ -6,8 +6,8 @@ export interface User {
 
 interface AuthContextType {
     user: User | null;
-    token: string | null;
-    login: (token: string, email: string) => void;
+    isInitializing: boolean;
+    login: (email: string) => void;
     logout: () => void;
     isAuthenticated: boolean;
 }

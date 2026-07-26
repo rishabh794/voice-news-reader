@@ -57,7 +57,7 @@ const Register = () => {
             return;
         }
 
-        authContext.login(authResponse.token, authResponse.email);
+        authContext.login(authResponse.email);
         showToast('Google account ready. Session initialized.', 'success');
         navigate('/dashboard');
     };

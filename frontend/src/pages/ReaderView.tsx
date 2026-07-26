@@ -17,6 +17,11 @@ const ReaderView = () => {
     const queryClient = useQueryClient();
     const { play, stop, togglePause, isPlaying, isPaused, isLoading: audioLoading } = useAudioPlayer();
 
+    // Scroll to top when reader opens or article changes
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [url]);
+
     const readerQuery = useQuery({
         queryKey: ['reader', url, id],
         queryFn: () => fetchReaderContent(url!, id || undefined),
@@ -86,16 +91,16 @@ const ReaderView = () => {
                 <p className="text-danger text-lg mb-2">Could not parse this article.</p>
                 <p className="text-muted">Some websites block automated parsing.</p>
                 <Button onClick={() => window.open(url, '_blank')} variant="outline">Open Original URL</Button>
-                <Button onClick={() => navigate(-1)} variant="ghost">Go Back</Button>
+                <Button onClick={() => navigate('/dashboard')} variant="ghost">Go Back</Button>
             </SectionContainer>
         );
     }
 
     return (
-        <SectionContainer className="max-w-3xl mx-auto space-y-8 py-8 relative">
+        <SectionContainer className="max-w-3xl mx-auto space-y-4 sm:space-y-8 py-4 sm:py-8 relative">
             <div className="mb-4">
                 <Button 
-                    onClick={() => navigate(-1)} 
+                    onClick={() => navigate('/dashboard')} 
                     className="flex items-center gap-2 text-primary hover:text-primary hover:bg-primary/10 px-3 py-2 -ml-3"
                     variant="ghost"
                 >
@@ -106,7 +111,7 @@ const ReaderView = () => {
 
             <header className="space-y-4 text-center">
                 <p className="text-primary font-mono uppercase tracking-widest text-sm">{article.siteName || new URL(url).hostname}</p>
-                <h1 className="text-3xl md:text-5xl font-display leading-tight text-foreground">{article.title}</h1>
+                <h1 className="text-2xl sm:text-3xl md:text-5xl font-display leading-tight text-foreground">{article.title}</h1>
                 {(article.byline || article.length) && (
                     <div className="flex items-center justify-center gap-4 text-muted text-sm">
                         {article.byline && <span>By {article.byline}</span>}
@@ -117,7 +122,7 @@ const ReaderView = () => {
             </header>
 
             {/* Floating Action Button for TTS */}
-            <div className="fixed bottom-[110px] right-8 z-50">
+            <div className="fixed bottom-[110px] right-4 sm:right-8 z-50">
                 <Button 
                     onClick={() => {
                         if (isPlaying || isPaused) {
@@ -128,7 +133,7 @@ const ReaderView = () => {
                         }
                     }}
                     variant={isPlaying ? 'primary' : 'secondary'}
-                    className="h-16 w-16 rounded-full shadow-2xl flex items-center justify-center p-0"
+                    className="h-12 w-12 sm:h-16 sm:w-16 rounded-full shadow-2xl flex items-center justify-center p-0"
                 >
                     {audioLoading ? (
                         <Loader simple />
@@ -143,7 +148,7 @@ const ReaderView = () => {
             </div>
 
             <article 
-                className="prose prose-invert prose-lg max-w-none text-text leading-relaxed"
+                className="prose prose-invert prose-sm sm:prose-lg max-w-none text-text leading-relaxed overflow-hidden break-words"
                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(article.content) }}
             />
         </SectionContainer>

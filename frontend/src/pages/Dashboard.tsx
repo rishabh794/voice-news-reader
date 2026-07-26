@@ -93,6 +93,33 @@ const Dashboard = () => {
                 setShowSummary(false);
                 setArticles([]);
                 setError('');
+            } else if (intent.action === 'history') {
+                navigate('/history');
+            } else if (intent.action === 'next' || intent.action === 'read') {
+                if (articles.length > 0) {
+                    let nextIdx = currentArticleIndex ?? 0;
+                    if (intent.action === 'next') {
+                        if (nextIdx < articles.length - 1) {
+                            nextIdx += 1;
+                        } else {
+                            showToast('That was the last article.', 'info');
+                            return;
+                        }
+                    }
+                    setSessionState({ currentArticleIndex: nextIdx });
+                    navigate(`/reader?url=${encodeURIComponent(articles[nextIdx].url)}`);
+                }
+            } else if (intent.action === 'save') {
+                const currentIndex = currentArticleIndex ?? 0;
+                if (articles.length > 0 && articles[currentIndex]) {
+                    const article = articles[currentIndex];
+                    const articleUrl = article.url?.trim();
+                    if (articleUrl && !savedArticleIdsByUrl[articleUrl]) {
+                         saveArticleMutation.mutate({ article });
+                    } else if (savedArticleIdsByUrl[articleUrl]) {
+                         showToast('Article is already saved', 'info');
+                    }
+                }
             }
         },
         onArticles: (fetchedArticles) => {
@@ -316,6 +343,12 @@ const Dashboard = () => {
         lastHandledRouteQuery.current = normalizedRouteQuery;
 
         if (!routeQuery) {
+            // If VoiceSession context already has valid articles + topic, skip any restore.
+            // This happens when navigating back from the reader page.
+            if (articles.length > 0 && topic) {
+                lastHandledPayload.current = `context:${topic}`;
+                return;
+            }
             restoreDashboardFromSession();
             return;
         }
@@ -330,7 +363,7 @@ const Dashboard = () => {
 
         setQuery(routeQuery);
         executeIntelligentSearch(routeQuery);
-    }, [location.search, executeIntelligentSearch, restoreDashboardFromSession]);
+    }, [location.search]);
 
     useEffect(() => {
         const parsedState = dashboardLocationStateSchema.safeParse(location.state);
@@ -545,7 +578,7 @@ const Dashboard = () => {
                     <Loader />
                 ) : !hasTopics ? (
                     // ONBOARDING MODE
-                    <Card className="p-8" variant="elevated">
+                    <Card className="p-4 sm:p-8" variant="elevated">
                         <TopicSelector
                             availableTopics={AI_HISTORY_CATEGORIES}
                             selectedTopics={[]}

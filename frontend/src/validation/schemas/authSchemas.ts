@@ -20,9 +20,12 @@ export const googleCredentialSchema = z.object({
 });
 
 export const authResponseSchema = z.object({
-    token: z.string().min(1, 'Missing auth token in response.'),
     email: z.string().email('Invalid account email in response.'),
     authProvider: z.enum(['local', 'google']).optional()
+});
+
+export const meResponseSchema = z.object({
+    email: z.string().email('Invalid account email in response.')
 });
 
 export const registerResponseSchema = z.object({

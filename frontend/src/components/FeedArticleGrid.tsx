@@ -17,7 +17,7 @@ const FeedArticleGrid = ({
     currentArticleIndex = null
 }: FeedArticleGridProps) => {
     return (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-5 overflow-hidden">
             {articles.map((article, index) => (
                 <NewsCard
                     key={article.url || index}

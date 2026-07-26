@@ -118,7 +118,12 @@ const VoiceAssistant = () => {
             }
 
             if (spokenText.includes('dashboard') || spokenText.includes('go back') || spokenText.includes('results')) {
-                navigate('/dashboard');
+                // If we're on the reader page, just go back to the dashboard with existing session
+                if (location.pathname.startsWith('/reader')) {
+                    navigate('/dashboard', { replace: true });
+                } else {
+                    navigate('/dashboard');
+                }
                 return;
             }
 

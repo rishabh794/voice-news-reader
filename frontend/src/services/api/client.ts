@@ -1,23 +1,16 @@
 import axios from 'axios';
 
 const API = axios.create({
-    baseURL: 'http://localhost:5000/api'
+    baseURL: 'http://localhost:5000/api',
+    withCredentials: true
 });
-
-API.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('token');
-        if (token && config.headers) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => Promise.reject(error)
-);
 
 API.interceptors.response.use(
     (response) => response,
     async (error) => {
+        if (error.response?.status === 401 || error.response?.status === 403) {
+            window.dispatchEvent(new CustomEvent('api:unauthorized'));
+        }
         if (error.response?.status === 429) {
             const retryAfter = error.response.headers?.['retry-after'] || 10;
             const message = error.response.data?.error || `Too many requests. Please wait ${retryAfter}s.`;

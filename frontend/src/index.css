@@ -94,6 +94,23 @@ h1, h2, h3, h4 {
   @apply text-primary font-medium underline underline-offset-4 hover:opacity-85 transition-opacity;
 }
 
+.prose img,
+.prose iframe,
+.prose video,
+.prose table,
+.prose pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 ::selection {
   background: var(--selection-bg);
   color: var(--selection-text);

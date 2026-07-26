@@ -14,14 +14,8 @@ export const verifyToken = (
     res: Response,
     next: NextFunction
 ): void => {
-    const authHeader = req.headers.authorization;
+    const token = req.cookies?.token || (req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.split(" ")[1] : null);
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        res.status(401).json({ error: "Access denied. No token provided." });
-        return;
-    }
-
-    const token = authHeader.split(" ")[1];
     if (!token) {
         res.status(401).json({ error: "Access denied. No token provided." });
         return;

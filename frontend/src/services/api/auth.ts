@@ -2,7 +2,6 @@ import API from './client';
 import { authSchemas, validateWithSchema } from '../../validation';
 
 export interface AuthResponse {
-    token: string;
     email: string;
     authProvider?: 'local' | 'google';
 }
@@ -56,4 +55,17 @@ export const authenticateWithGoogle = async (credential: string): Promise<AuthRe
         response.data,
         'Invalid Google login response from server.'
     );
+};
+
+export const fetchCurrentUser = async (): Promise<{ email: string }> => {
+    const response = await API.get('/auth/me');
+    return validateWithSchema(
+        authSchemas.meResponseSchema,
+        response.data,
+        'Invalid user profile response from server.'
+    );
+};
+
+export const logoutFromServer = async (): Promise<void> => {
+    await API.post('/auth/logout');
 };

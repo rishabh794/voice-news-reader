@@ -1,37 +1,70 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { AuthContext } from './auth-context';
 import type { User } from './auth-context';
+import { fetchCurrentUser, logoutFromServer } from '../services/api';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    // LAZY INITIALIZATION: Check localStorage immediately on first load
-   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
-    const [user, setUser] = useState<User | null>(() => {
-        const storedEmail = localStorage.getItem('email');
-        return storedEmail ? { email: storedEmail } : null;
-    });
+    const [user, setUser] = useState<User | null>(null);
+    const [isInitializing, setIsInitializing] = useState(true);
 
-    const login = (newToken: string, email: string) => {
-        localStorage.setItem('token', newToken);
-        localStorage.setItem('email', email);
-        setToken(newToken);
+    useEffect(() => {
+        let mounted = true;
+        const initAuth = async () => {
+            try {
+                const { email } = await fetchCurrentUser();
+                if (mounted) {
+                    setUser({ email });
+                }
+            } catch (err) {
+                if (mounted) {
+                    setUser(null);
+                }
+            } finally {
+                if (mounted) {
+                    setIsInitializing(false);
+                }
+            }
+        };
+
+        initAuth();
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    const login = (email: string) => {
         setUser({ email });
     };
 
-    const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('email');
-        sessionStorage.clear();
-        setToken(null);
-        setUser(null);
+    const logout = async () => {
+        try {
+            await logoutFromServer();
+        } catch (err) {
+            console.error('Logout error', err);
+        } finally {
+            setUser(null);
+            sessionStorage.clear();
+        }
     };
+
+    useEffect(() => {
+        const handleUnauthorized = () => {
+            setUser(null);
+            sessionStorage.clear();
+        };
+
+        window.addEventListener('api:unauthorized', handleUnauthorized);
+        return () => window.removeEventListener('api:unauthorized', handleUnauthorized);
+    }, []);
 
     return (
         <AuthContext.Provider value={{ 
             user, 
-            token, 
+            isInitializing,
             login, 
             logout, 
-            isAuthenticated: !!token 
+            isAuthenticated: !!user 
         }}>
             {children}
         </AuthContext.Provider>

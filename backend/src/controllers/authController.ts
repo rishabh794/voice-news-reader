@@ -95,7 +95,14 @@ export const login = async (req: Request, res: Response): Promise<any> => {
 
         const token = createAuthToken(String(user._id));
 
-        res.json({ token, email: user.email, authProvider: 'local' });
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 14 * 24 * 60 * 60 * 1000 // 14 days
+        });
+
+        res.json({ email: user.email, authProvider: 'local' });
     } catch (error) {
         console.error('Login Error:', error);
         res.status(500).json({ error: 'Server error during login' });
@@ -139,7 +146,15 @@ export const googleAuth = async (req: Request, res: Response): Promise<any> => {
         await user.save();
 
         const token = createAuthToken(String(user._id));
-        return res.json({ token, email: user.email, authProvider: 'google' });
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 14 * 24 * 60 * 60 * 1000 // 14 days
+        });
+
+        return res.json({ email: user.email, authProvider: 'google' });
     } catch (error) {
         console.error('Google Auth Error:', error);
 
@@ -154,3 +169,33 @@ export const googleAuth = async (req: Request, res: Response): Promise<any> => {
         return res.status(401).json({ error: 'Google authentication failed' });
     }
 };
+
+// GET CURRENT USER CONTROLLER
+export const me = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const userId = (req as any).user?.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'Not authenticated' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        res.json({ email: user.email });
+    } catch (error) {
+        console.error('Me Error:', error);
+        res.status(500).json({ error: 'Server error fetching user' });
+    }
+};
+
+// LOGOUT CONTROLLER
+export const logout = async (req: Request, res: Response): Promise<any> => {
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+    });
+    res.json({ message: 'Logged out successfully' });
+};

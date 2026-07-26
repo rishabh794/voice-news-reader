@@ -73,6 +73,10 @@ export interface SSESearchCallbacks {
 export const useSSESearch = (callbacks?: SSESearchCallbacks) => {
     const [state, dispatch] = useReducer(reducer, initialState);
     const abortControllerRef = useRef<AbortController | null>(null);
+    const callbacksRef = useRef(callbacks);
+
+    // Keep callbacks fresh
+    callbacksRef.current = callbacks;
 
     const abort = useCallback(() => {
         if (abortControllerRef.current) {
@@ -80,8 +84,8 @@ export const useSSESearch = (callbacks?: SSESearchCallbacks) => {
             abortControllerRef.current = null;
         }
         dispatch({ type: 'EVENT_COMPLETE' });
-        callbacks?.onComplete?.({ intent: null, articles: [], summary: '' });
-    }, [callbacks]);
+        callbacksRef.current?.onComplete?.({ intent: null, articles: [], summary: '' });
+    }, []);
 
     const startSearch = useCallback(async (query: string, context?: { previous_topic?: string | null }) => {
         let localIntent: { action: string; topic: string } | null = null;
@@ -98,7 +102,6 @@ export const useSSESearch = (callbacks?: SSESearchCallbacks) => {
 
         dispatch({ type: 'START' });
 
-        const token = localStorage.getItem('token');
         let url = `http://localhost:5000/api/stream/search?query=${encodeURIComponent(query)}`;
         if (context) {
             url += `&context=${encodeURIComponent(JSON.stringify(context))}`;
@@ -107,13 +110,15 @@ export const useSSESearch = (callbacks?: SSESearchCallbacks) => {
         try {
             const response = await fetch(url, {
                 method: 'GET',
-                headers: {
-                    ...(token ? { Authorization: `Bearer ${token}` } : {})
-                },
+                credentials: 'include',
                 signal
             });
 
             if (!response.ok) {
+                if (response.status === 401 || response.status === 403) {
+                    window.dispatchEvent(new CustomEvent('api:unauthorized'));
+                    return;
+                }
                 if (response.status === 429) {
                     dispatch({ type: 'EVENT_ERROR', payload: { message: 'Too many requests. Please try again later.' } });
                     return;
@@ -167,21 +172,21 @@ export const useSSESearch = (callbacks?: SSESearchCallbacks) => {
                                 case 'intent':
                                     localIntent = data;
                                     dispatch({ type: 'EVENT_INTENT', payload: data });
-                                    callbacks?.onIntent?.(data);
+                                    callbacksRef.current?.onIntent?.(data);
                                     break;
                                 case 'query_optimized':
                                     dispatch({ type: 'EVENT_QUERY_OPTIMIZED', payload: data });
-                                    callbacks?.onQueryOptimized?.(data);
+                                    callbacksRef.current?.onQueryOptimized?.(data);
                                     break;
                                 case 'articles':
                                     localArticles = data.articles;
                                     dispatch({ type: 'EVENT_ARTICLES', payload: data });
-                                    callbacks?.onArticles?.(data.articles);
+                                    callbacksRef.current?.onArticles?.(data.articles);
                                     break;
                                 case 'summary':
                                     localSummary = data.text;
                                     dispatch({ type: 'EVENT_SUMMARY', payload: data });
-                                    callbacks?.onSummary?.(data.text);
+                                    callbacksRef.current?.onSummary?.(data.text);
                                     break;
                                 case 'category':
                                     dispatch({ type: 'EVENT_CATEGORY', payload: data });
@@ -189,11 +194,11 @@ export const useSSESearch = (callbacks?: SSESearchCallbacks) => {
                                 case 'complete':
                                     completeFired = true;
                                     dispatch({ type: 'EVENT_COMPLETE' });
-                                    callbacks?.onComplete?.({ intent: localIntent, articles: localArticles, summary: localSummary });
+                                    callbacksRef.current?.onComplete?.({ intent: localIntent, articles: localArticles, summary: localSummary });
                                     break;
                                 case 'error':
                                     dispatch({ type: 'EVENT_ERROR', payload: data });
-                                    callbacks?.onError?.(data.message);
+                                    callbacksRef.current?.onError?.(data.message);
                                     break;
                             }
                         } catch (e) {

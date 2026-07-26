@@ -53,6 +53,7 @@ const TopBar = ({
         navigate(`/dashboard?q=${encodeURIComponent(trimmed)}`);
     };
 
+
     const handleLogout = () => {
         authContext?.logout();
         showToast('Logged out.', 'success');
@@ -60,12 +61,7 @@ const TopBar = ({
     };
 
     const mobileNavItems = isAuthenticated
-        ? [
-            { label: 'Home', to: '/' },
-            { label: 'Dashboard', to: '/dashboard' },
-            { label: 'History', to: '/history' },
-            { label: 'Saved', to: '/saved' }
-        ]
+        ? []
         : [
             { label: 'Home', to: '/' },
             { label: 'Login', to: '/login' },
@@ -200,22 +196,24 @@ const TopBar = ({
                 </div>
             </div>
 
-            <nav className="mx-auto flex max-w-[1400px] items-center gap-2 px-6 pb-3 text-[15px] lg:hidden">
-                {mobileNavItems.map((item) => (
-                    <Link
-                        key={item.label}
-                        to={item.to}
-                        className={[
-                            'rounded-md px-2.5 py-1.5 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
-                            isMobileItemActive(item.to)
-                                ? 'bg-elevated text-text'
-                                : 'text-muted hover:text-text hover:bg-surface/70'
-                        ].join(' ')}
-                    >
-                        {item.label}
-                    </Link>
-                ))}
-            </nav>
+            {mobileNavItems.length > 0 && (
+                <nav className="mx-auto flex max-w-[1400px] items-center gap-2 px-6 pb-3 text-[15px] lg:hidden">
+                    {mobileNavItems.map((item) => (
+                        <Link
+                            key={item.label}
+                            to={item.to}
+                            className={[
+                                'rounded-md px-2.5 py-1.5 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+                                isMobileItemActive(item.to)
+                                    ? 'bg-elevated text-text'
+                                    : 'text-muted hover:text-text hover:bg-surface/70'
+                            ].join(' ')}
+                        >
+                            {item.label}
+                        </Link>
+                    ))}
+                </nav>
+            )}
         </header>
     );
 };

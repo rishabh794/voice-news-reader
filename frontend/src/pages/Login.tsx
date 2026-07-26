@@ -40,10 +40,10 @@ const Login = () => {
         if (isSubmitting) return;
         setIsSubmitting(true);
         try {
-            const { token, email: userEmail } = await loginWithPassword(email, password);
+            const { email: userEmail } = await loginWithPassword(email, password);
 
             if (authContext) {
-                authContext.login(token, userEmail);
+                authContext.login(userEmail);
             }
 
             showToast('Login successful. Session initialized.', 'success');
@@ -62,7 +62,7 @@ const Login = () => {
             return;
         }
 
-        authContext.login(authResponse.token, authResponse.email);
+        authContext.login(authResponse.email);
         showToast('Google login successful. Session initialized.', 'success');
         navigate('/dashboard');
     };

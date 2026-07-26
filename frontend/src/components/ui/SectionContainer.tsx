@@ -2,7 +2,7 @@ import type { HTMLAttributes } from 'react';
 
 const SectionContainer = ({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) => {
     const classes = [
-        'mx-auto w-full max-w-[1400px] px-6 lg:px-10',
+        'mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10',
         className
     ]
         .filter(Boolean)

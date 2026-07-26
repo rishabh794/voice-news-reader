@@ -42,19 +42,19 @@ const TopicSelector = ({
     const isOnboarding = variant === 'onboarding';
 
     return (
-        <div className={`flex flex-col ${isOnboarding ? 'items-center text-center max-w-2xl mx-auto py-12' : ''}`}>
+        <div className={`flex flex-col ${isOnboarding ? 'items-center text-center max-w-2xl mx-auto py-6 sm:py-12 px-2' : ''}`}>
             {isOnboarding && (
                 <div className="mb-8 space-y-3">
-                    <h2 className="text-3xl font-display font-semibold text-text">
+                    <h2 className="text-xl sm:text-3xl font-display font-semibold text-text">
                         Pick topics you care about
                     </h2>
-                    <p className="text-lg text-muted">
+                    <p className="text-sm sm:text-lg text-muted">
                         Select a few categories to personalize your daily news feed. You can change these later.
                     </p>
                 </div>
             )}
 
-            <div className={`flex flex-wrap ${isOnboarding ? 'justify-center gap-4 mb-10' : 'gap-3 mb-6'}`}>
+            <div className={`flex flex-wrap ${isOnboarding ? 'justify-center gap-2 sm:gap-4 mb-6 sm:mb-10' : 'gap-3 mb-6'}`}>
                 {availableTopics.map((topic) => (
                     <TopicChip
                         key={topic}

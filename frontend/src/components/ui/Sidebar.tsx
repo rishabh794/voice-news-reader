@@ -15,7 +15,6 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     const isAuthenticated = Boolean(authContext?.isAuthenticated);
 
     const authItems = [
-        { label: 'Home', to: '/' },
         { label: 'Dashboard', to: '/dashboard' },
         { label: 'Briefing', to: '/briefing' },
         { label: 'History', to: '/history' },
