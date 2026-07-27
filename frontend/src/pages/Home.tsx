@@ -1,333 +1,471 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'motion/react';
 import './Home.css';
+import { ArrowRight, Play, Mail, Bookmark, ArrowDown, Activity, Filter, Clock } from 'lucide-react';
+import VoxLogo from '../components/ui/VoxLogo';
 
-const PIPELINE_STAGES = ['Transcribe', 'Intent', 'Fetch', 'Summarize'];
+/* ─── Animated Pipeline Icons ─── */
 
-const STAGE_RESULTS = [
-    {
-        title: 'Transcribing your voice input...',
-        excerpt: 'Converting speech to text using Groq Whisper. Your spoken question is being processed into a searchable query.',
-        source: 'System',
-        readTime: '',
-        category: 'Processing',
-    },
-    {
-        title: 'Understanding what you meant',
-        excerpt: 'Parsing your intent to determine the right topic, action, and scope. This ensures results match what you actually asked for.',
-        source: 'System',
-        readTime: '',
-        category: 'Analysis',
-    },
-    {
-        title: 'Solar capacity surpasses coal for the first time globally',
-        excerpt: 'The International Energy Agency reports that solar photovoltaic installations have reached a new milestone, overtaking coal-fired power in total installed capacity across 40 nations.',
-        source: 'Reuters',
-        readTime: '3 min read',
-        category: 'Energy',
-    },
-    {
-        title: 'Solar capacity surpasses coal for the first time globally',
-        excerpt: 'Global solar installations now exceed coal-fired capacity across 40 countries, marking a historic shift in the energy landscape according to the IEA.',
-        source: 'Reuters',
-        readTime: '3 min read',
-        category: 'Energy',
-    },
-];
-
-function useScrollFadeIn() {
-    const ref = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const el = ref.current;
-        if (!el) return;
-
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting) {
-                    el.classList.add('visible');
-                    observer.unobserve(el);
-                }
-            },
-            { threshold: 0.15 }
-        );
-
-        observer.observe(el);
-        return () => observer.disconnect();
-    }, []);
-
-    return ref;
+function AnimatedMicIcon() {
+    return (
+        <motion.svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8 text-primary">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            <line x1="12" x2="12" y1="19" y2="22" />
+            <motion.path d="M8 22h8" />
+            <motion.circle cx="12" cy="8" r="8" fill="currentColor" fillOpacity="0" variants={{
+                rest: { scale: 1, opacity: 0 },
+                hover: { scale: [1, 1.5], opacity: [0.2, 0], transition: { repeat: Infinity, duration: 1.5 } }
+            }} />
+        </motion.svg>
+    );
 }
 
-function FadeIn({ className = '', delay = 0, children }: { className?: string; delay?: number; children: React.ReactNode }) {
-    const ref = useScrollFadeIn();
-    const delayClass = delay > 0 ? ` delay-${delay}` : '';
+function AnimatedSparklesIcon() {
     return (
-        <div ref={ref} className={`landing-fade-in${delayClass} ${className}`}>
-            {children}
+        <motion.svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8 text-indigo-400 relative">
+            <motion.path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"
+                variants={{
+                    rest: { rotate: 0 },
+                    hover: { rotate: 180, scale: [1, 1.2, 1], transition: { duration: 2, repeat: Infinity, ease: "linear" } }
+                }}
+            />
+            <motion.path d="M5 3v4M3 5h4" variants={{ hover: { opacity: [0, 1, 0], scale: [0.5, 1.5, 0.5], transition: { repeat: Infinity, duration: 1.2, delay: 0.2 } } }} />
+            <motion.path d="M19 17v4M17 19h4" variants={{ hover: { opacity: [0, 1, 0], scale: [0.5, 1.5, 0.5], transition: { repeat: Infinity, duration: 1.5, delay: 0.5 } } }} />
+        </motion.svg>
+    );
+}
+
+function AnimatedSearchIcon() {
+    return (
+        <motion.svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8 text-success">
+            <motion.circle cx="11" cy="11" r="8" variants={{
+                hover: { cx: [11, 14, 8, 11], transition: { repeat: Infinity, duration: 2, ease: "easeInOut" } }
+            }} />
+            <motion.path d="m21 21-4.3-4.3" variants={{
+                hover: { x: [0, 3, -3, 0], y: [0, 3, -3, 0], transition: { repeat: Infinity, duration: 2, ease: "easeInOut" } }
+            }} />
+        </motion.svg>
+    );
+}
+
+function AnimatedVolumeIcon() {
+    return (
+        <motion.svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8 text-amber-500">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <motion.path d="M15.54 8.46a5 5 0 0 1 0 7.07" variants={{
+                rest: { opacity: 0.5 },
+                hover: { opacity: [0.3, 1, 0.3], transition: { repeat: Infinity, duration: 1 } }
+            }} />
+            <motion.path d="M19.07 4.93a10 10 0 0 1 0 14.14" variants={{
+                rest: { opacity: 0.3 },
+                hover: { opacity: [0.1, 1, 0.1], transition: { repeat: Infinity, duration: 1.5, delay: 0.2 } }
+            }} />
+        </motion.svg>
+    );
+}
+
+
+/* ─── Hero Section Components ─── */
+function HeroVisual() {
+    return (
+        <div className="relative w-full max-w-md mx-auto aspect-square flex items-center justify-center select-none">
+            {/* Ambient glow */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-primary/30 to-indigo-500/30 blur-3xl opacity-50 rounded-full animate-pulse" style={{ animationDuration: '4s' }} />
+
+            {/* Central glass orb */}
+            <div className="relative w-48 h-48 rounded-full bg-base/40 backdrop-blur-xl border border-white/10 shadow-[0_0_40px_rgba(59,130,246,0.3)] flex items-center justify-center overflow-hidden">
+                <div className="flex items-center gap-2">
+                    {[1, 2, 3, 4, 5, 4, 3, 2, 1].map((i, index) => (
+                        <motion.div
+                            key={index}
+                            animate={{ height: ['16px', `${Math.max(24, i * 14)}px`, '16px'] }}
+                            transition={{ repeat: Infinity, duration: 1.2, delay: index * 0.1 }}
+                            className="w-1.5 bg-primary rounded-full shadow-[0_0_10px_rgba(59,130,246,0.8)]"
+                        />
+                    ))}
+                </div>
+            </div>
+
+            {/* Floating News Cards */}
+            <motion.div
+                animate={{ y: [-10, 10, -10], rotate: [-2, 2, -2] }}
+                transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+                className="absolute top-1/4 -right-4 md:-right-8 bg-surface/80 backdrop-blur-md border border-border p-4 rounded-xl shadow-xl w-48"
+            >
+                <div className="h-2 w-1/3 bg-primary/60 rounded mb-3" />
+                <div className="h-2 w-full bg-border rounded mb-2" />
+                <div className="h-2 w-4/5 bg-border rounded" />
+            </motion.div>
+
+            <motion.div
+                animate={{ y: [10, -10, 10], rotate: [2, -2, 2] }}
+                transition={{ repeat: Infinity, duration: 5, ease: "easeInOut", delay: 1 }}
+                className="absolute bottom-1/4 -left-4 md:-left-8 bg-surface/80 backdrop-blur-md border border-border p-4 rounded-xl shadow-xl w-56"
+            >
+                <div className="h-2 w-1/4 bg-success/60 rounded mb-3" />
+                <div className="h-2 w-full bg-border rounded mb-2" />
+                <div className="h-2 w-3/4 bg-border rounded" />
+            </motion.div>
         </div>
     );
 }
 
-/* ─── Product Preview ─── */
-function ProductPreview() {
-    const [activeStage, setActiveStage] = useState(0);
-
-    const advance = useCallback(() => {
-        setActiveStage(prev => (prev + 1) % PIPELINE_STAGES.length);
-    }, []);
-
-    const result = STAGE_RESULTS[activeStage];
-    const isProcessing = activeStage < 2;
+/* ─── Pipeline Diagram Components ─── */
+function PipelineDiagram() {
+    const nodes = [
+        { label: 'Voice Input', icon: AnimatedMicIcon, desc: 'You speak naturally' },
+        { label: 'AI Process', icon: AnimatedSparklesIcon, desc: 'Intent is understood' },
+        { label: 'Live Search', icon: AnimatedSearchIcon, desc: 'Fresh articles fetched' },
+        { label: 'Audio Playback', icon: AnimatedVolumeIcon, desc: 'Streamed to you' }
+    ];
 
     return (
-        <div className="landing-preview" onClick={advance} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && advance()} aria-label="Click to advance pipeline stage">
-            <div className="landing-preview-header">
-                <span className="landing-preview-dot" />
-                <span className="landing-preview-dot" />
-                <span className="landing-preview-dot" />
-                <span className="landing-preview-header-hint">Click to advance</span>
-            </div>
+        <div className="w-full max-w-4xl mx-auto py-12">
+            <div className="flex flex-col md:flex-row justify-between items-stretch gap-6 relative">
+                {/* Horizontal connection line for desktop */}
+                <div className="hidden md:block absolute top-[40%] left-12 right-12 h-px bg-gradient-to-r from-transparent via-border to-transparent -translate-y-1/2 z-0" />
 
-            <div className="landing-preview-query">
-                <svg className="landing-preview-query-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="9" y="2" width="6" height="12" rx="3" />
-                    <path d="M5 10a7 7 0 0 0 14 0" />
-                    <line x1="12" y1="19" x2="12" y2="22" />
-                </svg>
-                <span className="landing-preview-query-text">"What's happening with renewable energy this week?"</span>
-            </div>
+                {nodes.map((node, i) => (
+                    <motion.div
+                        initial="rest"
+                        whileHover="hover"
+                        animate="rest"
+                        viewport={{ once: true, margin: "-100px" }}
+                        key={node.label}
+                        className="flex flex-col items-center gap-4 bg-card/80 backdrop-blur-sm p-6 rounded-2xl border border-border/50 w-full md:w-52 text-center shadow-sm relative z-10 hover:shadow-xl hover:border-primary/30 transition-all duration-300 cursor-default group overflow-hidden select-none"
+                    >
+                        {/* Hover flare */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-            <div className="landing-preview-pipeline">
-                {PIPELINE_STAGES.map((stage, i) => (
-                    <div key={stage} style={{ display: 'contents' }}>
-                        {i > 0 && <div className={`landing-preview-connector${i <= activeStage ? ' done' : ''}`} />}
-                        <div className={`landing-preview-stage${activeStage === i ? ' active' : ''}${i < activeStage ? ' done' : ''}`}>
-                            <span className="landing-preview-stage-label">{stage}</span>
+                        <div className="w-16 h-16 rounded-full bg-surface border border-border/50 flex items-center justify-center mb-1 relative z-10 group-hover:border-primary/30 transition-colors">
+                            <node.icon />
                         </div>
-                    </div>
+                        <div className="relative z-10">
+                            <div className="font-semibold text-text mb-1">{node.label}</div>
+                            <div className="text-sm text-muted">{node.desc}</div>
+                        </div>
+                    </motion.div>
                 ))}
             </div>
+        </div>
+    );
+}
 
-            <div className={`landing-preview-result${isProcessing ? ' processing' : ''}`} key={activeStage}>
-                <p className="landing-preview-result-title">
-                    {result.title}
-                </p>
-                <p className="landing-preview-result-excerpt">
-                    {result.excerpt}
-                </p>
-                {!isProcessing && (
-                    <div className="landing-preview-result-meta">
-                        <span>{result.source}</span>
-                        <span className="landing-preview-result-dot" />
-                        <span>{result.readTime}</span>
-                        <span className="landing-preview-result-dot" />
-                        <span>{result.category}</span>
+
+/* ─── Product Mockups (Realistic CSS components) ─── */
+function MockupDashboard() {
+    return (
+        <div className="w-full h-full bg-base/90 backdrop-blur-md border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col font-sans relative select-none">
+            <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-50 pointer-events-none" />
+            <div className="h-14 border-b border-border bg-surface/50 flex items-center px-6 gap-4 relative z-10">
+                <VoxLogo className="w-5 h-5 text-text" />
+                <div className="font-display font-bold text-sm">VoxNews</div>
+                <div className="ml-auto w-7 h-7 rounded-full bg-gradient-to-tr from-primary to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">JD</div>
+            </div>
+            <div className="flex-1 flex relative z-10">
+                <div className="w-48 hidden sm:flex flex-col gap-3 border-r border-border p-4 bg-surface/20">
+                    <div className="text-[10px] font-semibold text-muted uppercase tracking-wider mb-1 ml-2">Feeds</div>
+                    <div className="flex items-center gap-2 text-sm text-primary bg-primary/10 px-3 py-2 rounded-lg font-medium"><Activity size={14} /> Top Stories</div>
+                    <div className="flex items-center gap-2 text-sm text-muted px-3 py-2 hover:bg-surface rounded-lg transition-colors"><Bookmark size={14} /> Saved</div>
+                    <div className="flex items-center gap-2 text-sm text-muted px-3 py-2 hover:bg-surface rounded-lg transition-colors"><Clock size={14} /> History</div>
+                </div>
+                <div className="flex-1 p-6 flex flex-col gap-6">
+                    <div className="flex justify-between items-end">
+                        <div>
+                            <h2 className="text-2xl font-bold mb-1 tracking-tight">Your Briefing</h2>
+                            <p className="text-muted text-sm">Curated for John based on preferences.</p>
+                        </div>
+                        <div className="h-8 w-8 rounded-lg border border-border flex items-center justify-center text-muted"><Filter size={14} /></div>
                     </div>
-                )}
+                    <div className="grid gap-4">
+                        <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-card/80 backdrop-blur-sm border border-border rounded-xl p-5 flex flex-col gap-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer group relative overflow-hidden">
+                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary scale-y-0 group-hover:scale-y-100 transition-transform origin-top" />
+                            <div className="flex items-center gap-2 text-[11px] text-primary font-medium tracking-wide uppercase">
+                                <span>Technology</span> • <span>3 min listen</span>
+                            </div>
+                            <h3 className="font-semibold text-lg leading-tight group-hover:text-primary transition-colors">AI advancements in 2026 reach new milestones</h3>
+                            <p className="text-muted text-sm line-clamp-2">Major tech companies announce breakthroughs in neural processing efficiency, promising faster on-device inference.</p>
+                        </motion.div>
+                        <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-card/80 backdrop-blur-sm border border-border rounded-xl p-5 flex flex-col gap-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer group relative overflow-hidden">
+                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-success scale-y-0 group-hover:scale-y-100 transition-transform origin-top" />
+                            <div className="flex items-center gap-2 text-[11px] text-success font-medium tracking-wide uppercase">
+                                <span>Energy</span> • <span>5 min listen</span>
+                            </div>
+                            <h3 className="font-semibold text-lg leading-tight group-hover:text-success transition-colors">Global solar capacity surpasses coal</h3>
+                            <p className="text-muted text-sm line-clamp-2">For the first time in history, global installed solar capacity has exceeded that of coal-fired power plants.</p>
+                        </motion.div>
+                    </div>
+                </div>
             </div>
         </div>
     );
 }
 
-/* ─── Icons ─── */
-function ArrowDownIcon() {
+function MockupReader() {
     return (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 5v14" />
-            <path d="m19 12-7 7-7-7" />
-        </svg>
+        <div className="w-full h-full bg-base border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col font-sans relative select-none">
+            <div className="absolute -top-32 -right-32 w-64 h-64 bg-primary/20 rounded-full blur-[80px] pointer-events-none" />
+            <div className="h-14 border-b border-border bg-surface/50 flex items-center px-4 relative justify-between z-10 backdrop-blur-md">
+                <div className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center text-muted">
+                    <ArrowRight size={14} className="rotate-180" />
+                </div>
+                <div className="flex gap-1.5 items-center bg-card border border-border px-3 py-1 rounded-full shadow-sm">
+                    <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                    <span className="text-[10px] font-medium text-text uppercase tracking-wider">Live Readback</span>
+                </div>
+                <div className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center text-muted">
+                    <Bookmark size={14} />
+                </div>
+            </div>
+            <div className="flex-1 overflow-hidden relative z-10">
+                <div className="p-8 md:p-12 max-w-2xl mx-auto w-full flex flex-col gap-6">
+                    <h1 className="text-3xl font-display font-bold leading-tight">AI advancements in 2026 reach new milestones</h1>
+
+                    <div className="flex items-center gap-4 bg-gradient-to-r from-card to-surface p-4 rounded-xl border border-border/80 my-2 shadow-sm">
+                        <button className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/30 shrink-0 hover:scale-105 transition-transform relative">
+                            <Play size={18} className="ml-1 relative z-10" />
+                            <div className="absolute inset-0 rounded-full border-2 border-primary animate-ping opacity-20" />
+                        </button>
+                        <div className="flex flex-col flex-1">
+                            <span className="font-semibold text-sm">Listening to article...</span>
+                            <div className="flex items-center gap-2 mt-1">
+                                <div className="h-1 bg-border rounded-full flex-1 overflow-hidden">
+                                    <motion.div className="h-full bg-primary rounded-full" initial={{ width: 0 }} animate={{ width: '40%' }} transition={{ duration: 10, ease: "linear" }} />
+                                </div>
+                                <span className="text-[10px] font-mono text-muted">1:12 / 3:00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-5 text-text/85 text-sm md:text-base leading-relaxed font-serif">
+                        <p><span className="text-primary font-medium">Major tech companies have announced</span> significant breakthroughs in neural processing efficiency this week, promising a new era of faster, more secure on-device inference for consumers.</p>
+                        <p className="opacity-70">The developments, unveiled at the annual Developer Summit, showcase a 40% reduction in power consumption for large language models running directly on smartphones and laptops. This shift away from cloud dependency addresses long-standing privacy concerns.</p>
+                    </div>
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-base via-base/80 to-transparent pointer-events-none" />
+            </div>
+        </div>
+    );
+}
+
+function MockupEmail() {
+    return (
+        <div className="w-full h-full bg-surface/50 border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col p-4 sm:p-8 relative select-none">
+            <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-primary/10 rounded-full blur-[60px]" />
+            <div className="bg-card rounded-xl flex-1 border border-border shadow-lg flex flex-col max-w-md mx-auto w-full overflow-hidden relative z-10 transform -rotate-1 hover:rotate-0 transition-transform duration-500 ease-out mt-4 mb-4">
+                <div className="bg-gradient-to-r from-primary to-indigo-600 p-6 text-center text-white relative overflow-hidden">
+                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-xl" />
+                    <Mail size={24} className="mx-auto mb-3 opacity-90" />
+                    <h2 className="text-xl font-bold tracking-tight">Your Daily Briefing</h2>
+                    <p className="text-white/70 text-xs mt-1.5 uppercase tracking-wider font-medium">Tuesday, July 27</p>
+                </div>
+                <div className="p-6 flex flex-col gap-6 overflow-y-auto bg-card">
+                    <p className="text-sm text-text/90">Good morning! Here are the top stories tailored to your interests.</p>
+
+                    <div className="flex flex-col gap-5">
+                        <div className="flex gap-3 items-start group">
+                            <div className="w-1 h-full min-h-[40px] bg-primary rounded-full mt-1 group-hover:scale-y-110 transition-transform" />
+                            <div>
+                                <h3 className="font-semibold text-text mb-1 text-sm leading-tight">Tech Giants Unveil On-Device AI</h3>
+                                <p className="text-xs text-muted leading-relaxed">New neural processors reduce power consumption by 40%, enabling powerful local AI assistants.</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 items-start group">
+                            <div className="w-1 h-full min-h-[40px] bg-success rounded-full mt-1 group-hover:scale-y-110 transition-transform" />
+                            <div>
+                                <h3 className="font-semibold text-text mb-1 text-sm leading-tight">Solar Eclipses Coal</h3>
+                                <p className="text-xs text-muted leading-relaxed">Global solar capacity hits historic milestone, driven by massive installations in emerging markets.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button className="w-full py-3 bg-surface border border-border rounded-lg text-sm font-medium hover:bg-elevated hover:border-primary/50 transition-all mt-4 text-primary shadow-sm">
+                        Listen on VoxNews
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 }
 
 /* ─── Main Page ─── */
 export default function Home() {
+
     return (
-        <main className="min-h-screen text-text">
-            {/* ─── Hero ─── */}
-            <section className="landing-hero">
-                <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10">
-                    <div className="landing-hero-grid">
-                        <FadeIn>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                                <h1 className="landing-hero-headline font-display text-text">
-                                    Search the news<br />by speaking.
-                                </h1>
-                                <p className="landing-hero-sub text-muted">
-                                    VoxNews turns your spoken questions into curated briefings from trusted sources. No tabs, no feeds, no noise — just the stories that matter to you, read aloud or delivered as clean text.
-                                </p>
-                                <div className="landing-cta-group">
-                                    <Link to="/register" className="landing-cta-primary">
-                                        Get Started
-                                    </Link>
-                                    <a href="#how-it-works" className="landing-cta-secondary">
-                                        See How It Works
-                                        <ArrowDownIcon />
-                                    </a>
-                                </div>
-                            </div>
-                        </FadeIn>
+        <main className="min-h-screen text-text relative bg-base overflow-x-hidden">
+            <div className="landing-ambient-bg" />
 
-                        <FadeIn delay={2}>
-                            <ProductPreview />
-                        </FadeIn>
-                    </div>
-                </div>
-            </section>
-
-            {/* ─── How It Works ─── */}
-            <section className="landing-section" id="how-it-works">
-                <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10">
-                    <FadeIn>
-                        <p className="landing-section-label">How it works</p>
-                        <h2 className="landing-section-heading font-display text-text">Three steps, no learning curve</h2>
-                        <p className="landing-section-sub">
-                            Speak naturally, and VoxNews handles the rest. No commands to memorize, no menus to navigate.
+            {/* 1. Hero */}
+            <section className="relative z-10 min-h-screen flex items-center py-20 px-4 sm:px-6 lg:px-10 -mt-16">
+                <div className="w-full max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center pt-16">
+                    <div className="flex flex-col gap-6 max-w-xl mx-auto text-center lg:text-left lg:mx-0">
+                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-semibold tracking-tight leading-[1.15]">
+                            Listen to the news<br />
+                            <span className="text-primary">you care about.</span>
+                        </h1>
+                        <p className="text-base md:text-lg text-muted leading-relaxed max-w-lg mx-auto lg:mx-0">
+                            Speak what you want to know. We instantly fetch, summarize, and read back your personalized daily briefing. No scrolling required.
                         </p>
-                    </FadeIn>
-
-                    <div className="landing-how-grid">
-                        <FadeIn delay={1}>
-                            <div className="landing-how-item">
-                                <div className="landing-how-number">01</div>
-                                <div className="landing-how-content">
-                                    <h3 className="landing-how-title">Speak your question</h3>
-                                    <p className="landing-how-desc">
-                                        Ask anything naturally. The microphone captures your voice and transcribes it in real time.
-                                    </p>
-                                </div>
-                            </div>
-                        </FadeIn>
-                        <FadeIn delay={2}>
-                            <div className="landing-how-item">
-                                <div className="landing-how-number">02</div>
-                                <div className="landing-how-content">
-                                    <h3 className="landing-how-title">AI understands your intent</h3>
-                                    <p className="landing-how-desc">
-                                        A language model parses what you meant — not just the words — and routes you to the right results.
-                                    </p>
-                                </div>
-                            </div>
-                        </FadeIn>
-                        <FadeIn delay={3}>
-                            <div className="landing-how-item">
-                                <div className="landing-how-number">03</div>
-                                <div className="landing-how-content">
-                                    <h3 className="landing-how-title">Read or listen</h3>
-                                    <p className="landing-how-desc">
-                                        Articles are fetched, summarized, and presented in a clean reader. Play them aloud or read at your own pace.
-                                    </p>
-                                </div>
-                            </div>
-                        </FadeIn>
-                    </div>
-                </div>
-            </section>
-
-            {/* ─── Features — alternating rows ─── */}
-            <section className="landing-section">
-                <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10">
-                    <FadeIn>
-                        <div className="landing-feature-row">
-                            <div className="landing-feature-text">
-                                <p className="landing-section-label">Voice-first search</p>
-                                <h3 className="landing-feature-row-title font-display text-text">
-                                    Search for any topic by speaking naturally
-                                </h3>
-                                <p className="landing-feature-row-desc">
-                                    The AI pipeline transcribes your voice, interprets your intent, fetches relevant articles from live sources, and summarizes them — all from a single spoken sentence. No typing, no filters, no menus.
-                                </p>
-                            </div>
-                            <div className="landing-feature-visual">
-                                <div className="landing-feature-visual-inner">
-                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-primary)' }}>
-                                        <rect x="9" y="2" width="6" height="12" rx="3" />
-                                        <path d="M5 10a7 7 0 0 0 14 0" />
-                                        <line x1="12" y1="19" x2="12" y2="22" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-                    </FadeIn>
-
-                    <FadeIn>
-                        <div className="landing-feature-row reverse">
-                            <div className="landing-feature-text">
-                                <p className="landing-section-label">Daily briefings</p>
-                                <h3 className="landing-feature-row-title font-display text-text">
-                                    A personalized morning briefing, built for you
-                                </h3>
-                                <p className="landing-feature-row-desc">
-                                    Choose your topics and receive a curated news briefing each morning. Listen to it as audio during your commute, or read the summary over coffee. Every source is linked and verifiable.
-                                </p>
-                            </div>
-                            <div className="landing-feature-visual">
-                                <div className="landing-feature-visual-inner">
-                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-primary)' }}>
-                                        <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" />
-                                        <path d="M18 14h-8" />
-                                        <path d="M15 18h-5" />
-                                        <path d="M10 6h8v4h-8V6Z" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-                    </FadeIn>
-
-                    <FadeIn>
-                        <div className="landing-feature-row">
-                            <div className="landing-feature-text">
-                                <p className="landing-section-label">Distraction-free reader</p>
-                                <h3 className="landing-feature-row-title font-display text-text">
-                                    Read articles without the noise
-                                </h3>
-                                <p className="landing-feature-row-desc">
-                                    Open any article in a clean reader view stripped of ads, popups, and clutter. Play it back as audio with one tap. Save articles into organized collections for later reference.
-                                </p>
-                            </div>
-                            <div className="landing-feature-visual">
-                                <div className="landing-feature-visual-inner">
-                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-primary)' }}>
-                                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-                    </FadeIn>
-                </div>
-            </section>
-
-            {/* ─── CTA Block ─── */}
-            <section className="landing-cta-section">
-                <div className="landing-cta-gradient" />
-                <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10 relative z-10">
-                    <FadeIn>
-                        <div className="landing-cta-inner">
-                            <h2 className="landing-cta-block-heading font-display">
-                                Stop scrolling. Start asking.
-                            </h2>
-                            <p className="landing-cta-block-sub">
-                                Create a free account and start using your voice to search the news in under a minute.
-                            </p>
-                            <Link to="/register" className="landing-cta-primary">
-                                Create Free Account
+                        <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-6">
+                            <Link to="/register" className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-primary text-white font-medium hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(59,130,246,0.4)] transition-all shadow-lg">
+                                Start Listening for Free
                             </Link>
+                            <a href="#how-it-works" className="w-full sm:w-auto px-8 py-3.5 rounded-xl border border-border bg-surface/50 backdrop-blur hover:bg-surface text-text font-medium transition-colors flex items-center justify-center gap-2">
+                                See how it works <ArrowDown size={16} />
+                            </a>
                         </div>
-                    </FadeIn>
+                    </div>
+                    <div className="w-full max-w-md mx-auto lg:max-w-none perspective-[1000px]">
+                        <motion.div initial={{ rotateY: -5, opacity: 0 }} animate={{ rotateY: 0, opacity: 1 }} transition={{ duration: 1, ease: "easeOut" }}>
+                            <HeroVisual />
+                        </motion.div>
+                    </div>
                 </div>
             </section>
 
-            {/* ─── Footer ─── */}
-            <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10">
-                <footer className="landing-footer">
-                    <span className="landing-footer-copy">VoxNews</span>
-                    <div className="landing-footer-links">
-                        <Link to="/login" className="landing-footer-link">Login</Link>
-                        <Link to="/register" className="landing-footer-link">Register</Link>
+            {/* 2. How it works (Pipeline) */}
+            <section id="how-it-works" className="relative z-10 py-24 px-4 sm:px-6 lg:px-10 border-t border-border/50 bg-surface/30">
+                <div className="w-full max-w-[1400px] mx-auto">
+                    <div className="text-center mb-16">
+                        <div className="inline-flex items-center gap-2 text-primary font-semibold mb-6 bg-primary/10 px-4 py-1.5 rounded-full w-max text-sm border border-primary/20">
+                            How it works
+                        </div>
+                        <h2 className="text-3xl md:text-4xl font-display font-semibold mb-4">From voice to ears in seconds.</h2>
+                        <p className="text-muted text-lg max-w-2xl mx-auto">A seamless pipeline designed to give you exactly what you asked for, completely automated behind the scenes.</p>
                     </div>
-                </footer>
-            </div>
+                    <PipelineDiagram />
+                </div>
+            </section>
+
+            {/* 4. Inside the product (Alternating Layout) */}
+            <section className="relative z-10 px-4 sm:px-6 lg:px-10 py-24 bg-base border-t border-border/50 overflow-hidden">
+                <div className="w-full max-w-[1400px] mx-auto flex flex-col gap-20">
+
+                    {/* Feature 1: Dashboard */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                        <div className="flex flex-col">
+                            <div className="inline-flex items-center gap-2 text-primary font-semibold mb-6 bg-primary/10 px-4 py-1.5 rounded-full w-max text-sm border border-primary/20">
+                                Dashboard
+                            </div>
+                            <h3 className="text-3xl md:text-5xl font-display font-bold mb-6 tracking-tight">Your personalized hub</h3>
+                            <p className="text-lg text-muted leading-relaxed mb-8">
+                                A clean, distraction-free environment that curates articles based on your historical intent and explicit preferences.
+                            </p>
+                            <ul className="flex flex-col gap-4 text-text/80">
+                                <li className="flex items-start gap-3">
+                                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-primary" />
+                                    <span><strong>Dynamic routing:</strong> Simply ask for a topic, and your feed instantly updates.</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-primary" />
+                                    <span><strong>Saved collections:</strong> Bookmark articles to read or listen to later.</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-primary" />
+                                    <span><strong>Complete history:</strong> Never lose track of what you've heard.</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div className="w-full aspect-square max-w-[500px] mx-auto lg:ml-auto">
+                            <MockupDashboard />
+                        </div>
+                    </div>
+
+                    {/* Feature 2: Reader Mode (Image Left, Text Right) */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                        <div className="order-2 lg:order-1 w-full aspect-square max-w-[500px] mx-auto lg:mr-auto">
+                            <MockupReader />
+                        </div>
+                        <div className="flex flex-col order-1 lg:order-2">
+                            <div className="inline-flex items-center gap-2 text-success font-semibold mb-6 bg-success/10 px-4 py-1.5 rounded-full w-max text-sm border border-success/20">
+                                Reader Mode
+                            </div>
+                            <h3 className="text-3xl md:text-5xl font-display font-bold mb-6 tracking-tight">Listen or read</h3>
+                            <p className="text-lg text-muted leading-relaxed mb-8">
+                                Content is stripped of ads and popups. A persistent audio controller lets you stream the article summary instantly while you multitask.
+                            </p>
+                            <ul className="flex flex-col gap-4 text-text/80">
+                                <li className="flex items-start gap-3">
+                                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-success" />
+                                    <span><strong>Distraction-free:</strong> Beautiful typography tailored for reading.</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-success" />
+                                    <span><strong>AI Readback:</strong> Natural-sounding voices narrate the summary.</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-success" />
+                                    <span><strong>Audio tracking:</strong> Follow along with synchronized text highlighting.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    {/* Feature 3: Briefings */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                        <div className="flex flex-col">
+                            <div className="inline-flex items-center gap-2 text-indigo-400 font-semibold mb-6 bg-indigo-500/10 px-4 py-1.5 rounded-full w-max text-sm border border-indigo-500/20">
+                                Briefings
+                            </div>
+                            <h3 className="text-3xl md:text-5xl font-display font-bold mb-6 tracking-tight">Daily morning digests</h3>
+                            <p className="text-lg text-muted leading-relaxed mb-8">
+                                Wake up to a customized morning digest delivered straight to your inbox. Perfect for catching up on your commute before you even open the app.
+                            </p>
+                            <ul className="flex flex-col gap-4 text-text/80">
+                                <li className="flex items-start gap-3">
+                                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                    <span><strong>Automated delivery:</strong> Runs reliably on schedule every day.</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                    <span><strong>Personalized summaries:</strong> LLM-curated based on your interests.</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                    <span><strong>One-click play:</strong> Jump straight from email to audio player.</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div className="w-full aspect-square max-w-[500px] mx-auto lg:ml-auto">
+                            <MockupEmail />
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            {/* 5. Footer */}
+            <footer className="relative z-10 pt-16 pb-8 px-4 sm:px-6 lg:px-10 border-t border-border bg-card">
+                <div className="w-full max-w-[1400px] mx-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+                        <div className="md:col-span-2 flex flex-col gap-4">
+                            <Link to="/" className="flex items-center gap-2 font-display text-xl font-bold text-text">
+                                <VoxLogo className="w-8 h-8 text-primary" />
+                                VoxNews
+                            </Link>
+                            <p className="text-muted text-sm max-w-sm">
+                                Your personal audio news assistant. Search the web with your voice and get instant, ad-free summaries read back to you.
+                            </p>
+                        </div>
+                        <div className="flex flex-col gap-3">
+                            <h4 className="font-semibold text-text mb-2">Product</h4>
+                            <Link to="/register" className="text-sm text-muted hover:text-primary transition-colors">Sign Up</Link>
+                            <Link to="/login" className="text-sm text-muted hover:text-primary transition-colors">Log In</Link>
+                            <a href="#how-it-works" className="text-sm text-muted hover:text-primary transition-colors">How it Works</a>
+                        </div>
+                        <div className="flex flex-col gap-3">
+                            <h4 className="font-semibold text-text mb-2">Platform</h4>
+                            <Link to="/dashboard" className="text-sm text-muted hover:text-primary transition-colors">Your Dashboard</Link>
+                            <Link to="/settings" className="text-sm text-muted hover:text-primary transition-colors">Settings</Link>
+                            <a href="https://github.com/rishabh794/voice-news-reader" target="_blank" rel="noreferrer" className="text-sm text-muted hover:text-primary transition-colors">Source Code</a>
+                        </div>
+                    </div>
+                    <div className="border-t border-border/50 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted">
+                        <p>© {new Date().getFullYear()} VoxNews. All rights reserved.</p>
+                    </div>
+                </div>
+            </footer>
         </main>
     );
 }

@@ -76,8 +76,11 @@ const Login = () => {
                 <div className="auth-gradient-orb auth-gradient-orb-1" />
                 <div className="auth-gradient-orb auth-gradient-orb-2" />
                 <div className="auth-gradient-orb auth-gradient-orb-3" />
-                <div className="auth-panel-content">
-                    <VoxLogo className="auth-logo-mark" />
+                <div className="auth-panel-content p-4 sm:p-8 w-full">
+                    <div className="mb-10 inline-flex items-center gap-3">
+                        <VoxLogo className="w-10 h-10 text-primary" />
+                        <span className="font-display font-bold text-2xl tracking-tight text-white dark:text-white">VoxNews</span>
+                    </div>
                     <h1 className="auth-panel-heading font-display">
                         Your morning briefing,<br />ready when you are.
                     </h1>
