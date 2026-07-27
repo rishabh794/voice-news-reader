@@ -8,6 +8,8 @@ import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import { registerWithPassword, type AuthResponse } from '../services/api';
 import { getErrorMessage } from '../validation';
+import VoxLogo from '../components/ui/VoxLogo';
+import '../pages/Home.css';
 
 const EyeIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
@@ -64,24 +66,19 @@ const Register = () => {
 
     return (
         <div className="min-h-screen grid lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="relative hidden lg:flex flex-col justify-between bg-surface px-12 py-12">
-                <div className="text-sm font-mono uppercase tracking-wider text-subtle">VoiceNews</div>
-                <div className="space-y-6 max-w-md">
-                    <h1 className="text-4xl font-display text-text">
-                        Build a focused daily briefing in minutes.
+            <div className="auth-gradient-panel hidden lg:flex">
+                <div className="auth-gradient-bg" />
+                <div className="auth-gradient-orb auth-gradient-orb-1" />
+                <div className="auth-gradient-orb auth-gradient-orb-2" />
+                <div className="auth-gradient-orb auth-gradient-orb-3" />
+                <div className="auth-panel-content">
+                    <VoxLogo className="auth-logo-mark" />
+                    <h1 className="auth-panel-heading font-display">
+                        Build your personal<br />news intelligence.
                     </h1>
-                    <p className="text-[15px] text-muted">
-                        Create your account and start tracking the signals that matter to your sector.
+                    <p className="auth-panel-sub">
+                        Create your account and start tracking the topics that matter. Voice search, daily briefings, and a clean reader — all in one place.
                     </p>
-                    <div className="space-y-2 text-[15px] text-muted">
-                        <p>Fast topic search and summarized briefs.</p>
-                        <p>Voice playback for hands-free review.</p>
-                        <p>Clean archival history you can revisit anytime.</p>
-                    </div>
-                </div>
-                <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute -right-24 top-10 h-72 w-72 rounded-full bg-primary/10 blur-3xl"></div>
-                    <div className="absolute bottom-10 left-10 h-64 w-64 rounded-full bg-warning/10 blur-3xl"></div>
                 </div>
             </div>
 

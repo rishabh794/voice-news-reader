@@ -1,274 +1,333 @@
-import { useState, useEffect, useRef } from "react";
-import Badge from "../components/ui/Badge";
-import Card from "../components/ui/Card";
-import SectionContainer from "../components/ui/SectionContainer";
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import './Home.css';
 
-type VoiceState = "idle" | "listening" | "processing" | "result";
+const PIPELINE_STAGES = ['Transcribe', 'Intent', 'Fetch', 'Summarize'];
 
-const EXAMPLE_COMMANDS = [
-  { command: "Take me to the dashboard", tag: "Navigation" },
-  { command: "Find news about space exploration", tag: "Search" },
-  { command: "What's happening in tech today?", tag: "Discovery" },
-  { command: "Read me the top headline", tag: "Playback" },
-  { command: "Show me breaking news from India", tag: "Regional" },
-  { command: "Go to sports and read the latest", tag: "Category" },
+const STAGE_RESULTS = [
+    {
+        title: 'Transcribing your voice input...',
+        excerpt: 'Converting speech to text using Groq Whisper. Your spoken question is being processed into a searchable query.',
+        source: 'System',
+        readTime: '',
+        category: 'Processing',
+    },
+    {
+        title: 'Understanding what you meant',
+        excerpt: 'Parsing your intent to determine the right topic, action, and scope. This ensures results match what you actually asked for.',
+        source: 'System',
+        readTime: '',
+        category: 'Analysis',
+    },
+    {
+        title: 'Solar capacity surpasses coal for the first time globally',
+        excerpt: 'The International Energy Agency reports that solar photovoltaic installations have reached a new milestone, overtaking coal-fired power in total installed capacity across 40 nations.',
+        source: 'Reuters',
+        readTime: '3 min read',
+        category: 'Energy',
+    },
+    {
+        title: 'Solar capacity surpasses coal for the first time globally',
+        excerpt: 'Global solar installations now exceed coal-fired capacity across 40 countries, marking a historic shift in the energy landscape according to the IEA.',
+        source: 'Reuters',
+        readTime: '3 min read',
+        category: 'Energy',
+    },
 ];
 
-const PIPELINE_STEPS = [
-  { label: "Voice Input", sub: "MediaRecorder API", icon: "MIC" },
-  { label: "Transcription", sub: "Groq Whisper-v3", icon: "STT" },
-  { label: "Intent Parse", sub: "Groq Llama 3", icon: "LLM" },
-  { label: "News Fetch", sub: "GNews API", icon: "API" },
-  { label: "Read Aloud", sub: "Web Speech API", icon: "TTS" },
-];
+function useScrollFadeIn() {
+    const ref = useRef<HTMLDivElement>(null);
 
-const INTENT_STEPS = [
-  {
-    step: "01",
-    label: "You speak naturally",
-    description:
-      "Say anything - no rigid phrasing needed. The system captures your full spoken sentence via the microphone.",
-  },
-  {
-    step: "02",
-    label: "Llama 3 parses intent",
-    description:
-      "Groq Llama 3 reads your transcribed sentence and extracts three structured fields: action, destination page, and search topic.",
-  },
-  {
-    step: "03",
-    label: "Router navigates",
-    description:
-      "React Router receives the resolved route and navigates instantly - no clicks, no menus, no friction.",
-  },
-  {
-    step: "04",
-    label: "News fetched and read aloud",
-    description:
-      "GNews API pulls live headlines matching your topic. Web Speech API reads the top result back to you automatically.",
-  },
-];
+    useEffect(() => {
+        const el = ref.current;
+        if (!el) return;
 
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    el.classList.add('visible');
+                    observer.unobserve(el);
+                }
+            },
+            { threshold: 0.15 }
+        );
 
-const STATE_LABELS: Record<VoiceState, string> = {
-  idle: "Press to speak",
-  listening: "Listening...",
-  processing: "Processing intent",
-  result: "Navigating",
-};
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
 
-const STATE_CYCLE: VoiceState[] = [
-  "idle",
-  "listening",
-  "processing",
-  "result",
-  "idle",
-];
+    return ref;
+}
 
-export default function Home() {
-  const [voiceState, setVoiceState] = useState<VoiceState>("idle");
-  const [activeStep, setActiveStep] = useState<number>(-1);
-  const [ticker, setTicker] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+function FadeIn({ className = '', delay = 0, children }: { className?: string; delay?: number; children: React.ReactNode }) {
+    const ref = useScrollFadeIn();
+    const delayClass = delay > 0 ? ` delay-${delay}` : '';
+    return (
+        <div ref={ref} className={`landing-fade-in${delayClass} ${className}`}>
+            {children}
+        </div>
+    );
+}
 
-  useEffect(() => {
-    const t = setInterval(() => setTicker((n) => n + 1), 3200);
-    return () => clearInterval(t);
-  }, []);
+/* ─── Product Preview ─── */
+function ProductPreview() {
+    const [activeStage, setActiveStage] = useState(0);
 
-  const handleMicClick = () => {
-    if (intervalRef.current) return;
-    let idx = 1;
-    setVoiceState("listening");
-    intervalRef.current = setInterval(() => {
-      const next = STATE_CYCLE[idx];
-      setVoiceState(next);
-      idx++;
-      if (idx >= STATE_CYCLE.length) {
-        clearInterval(intervalRef.current!);
-        intervalRef.current = null;
-        setVoiceState("idle");
-      }
-    }, 1200);
-  };
+    const advance = useCallback(() => {
+        setActiveStage(prev => (prev + 1) % PIPELINE_STAGES.length);
+    }, []);
 
-  useEffect(() => {
-    const steps = [0, 1, 2, 3, 4];
-    let i = 0;
-    const t = setInterval(() => {
-      setActiveStep(steps[i % steps.length]);
-      i++;
-    }, 1800);
-    return () => clearInterval(t);
-  }, []);
+    const result = STAGE_RESULTS[activeStage];
+    const isProcessing = activeStage < 2;
 
-  const isListening = voiceState === "listening";
-  const isProcessing = voiceState === "processing";
-  const isResult = voiceState === "result";
-
-  return (
-    <main className="min-h-screen text-text">
-      <section className="py-16 lg:py-24">
-        <SectionContainer>
-          <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] items-center">
-            <div className="space-y-6">
-              <Badge variant="primary">AI-powered voice news</Badge>
-              <h1 className="text-4xl lg:text-5xl font-display tracking-tight">
-                Track the news that moves your industry.
-              </h1>
-              <p className="text-[15px] text-muted max-w-prose">
-                VoiceNews delivers fast summaries and trusted source links for professionals who track high-value, niche topics.
-              </p>
-              <div className="flex flex-wrap gap-3 text-xs font-mono uppercase tracking-wider text-subtle">
-                <span>Clear summaries</span>
-                <span>Low eye strain</span>
-                <span>Voice playback</span>
-              </div>
+    return (
+        <div className="landing-preview" onClick={advance} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && advance()} aria-label="Click to advance pipeline stage">
+            <div className="landing-preview-header">
+                <span className="landing-preview-dot" />
+                <span className="landing-preview-dot" />
+                <span className="landing-preview-dot" />
+                <span className="landing-preview-header-hint">Click to advance</span>
             </div>
 
-            <Card className="p-6 space-y-6" variant="elevated">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-mono uppercase tracking-wider text-subtle">
-                  Voice console
+            <div className="landing-preview-query">
+                <svg className="landing-preview-query-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="2" width="6" height="12" rx="3" />
+                    <path d="M5 10a7 7 0 0 0 14 0" />
+                    <line x1="12" y1="19" x2="12" y2="22" />
+                </svg>
+                <span className="landing-preview-query-text">"What's happening with renewable energy this week?"</span>
+            </div>
+
+            <div className="landing-preview-pipeline">
+                {PIPELINE_STAGES.map((stage, i) => (
+                    <div key={stage} style={{ display: 'contents' }}>
+                        {i > 0 && <div className={`landing-preview-connector${i <= activeStage ? ' done' : ''}`} />}
+                        <div className={`landing-preview-stage${activeStage === i ? ' active' : ''}${i < activeStage ? ' done' : ''}`}>
+                            <span className="landing-preview-stage-label">{stage}</span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div className={`landing-preview-result${isProcessing ? ' processing' : ''}`} key={activeStage}>
+                <p className="landing-preview-result-title">
+                    {result.title}
                 </p>
-                <Badge variant={isListening ? 'primary' : isProcessing ? 'warning' : isResult ? 'success' : 'neutral'}>
-                  {STATE_LABELS[voiceState]}
-                </Badge>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={handleMicClick}
-                  className={[
-                    'flex h-14 w-14 items-center justify-center rounded-full border transition-colors duration-150',
-                    isListening
-                      ? 'border-primary text-primary bg-primary/10'
-                      : isProcessing
-                      ? 'border-warning text-warning bg-warning/10'
-                      : isResult
-                      ? 'border-success text-success bg-success/10'
-                      : 'border-border/70 text-muted bg-surface'
-                  ].join(' ')}
-                >
-                  {isProcessing ? (
-                    <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                      <path className="opacity-80" d="M4 12a8 8 0 0 1 8-8" stroke="currentColor" strokeWidth="3" />
-                    </svg>
-                  ) : (
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="9" y="2" width="6" height="12" rx="3" />
-                      <path d="M5 10a7 7 0 0 0 14 0" />
-                      <line x1="12" y1="19" x2="12" y2="22" />
-                      <line x1="9" y1="22" x2="15" y2="22" />
-                    </svg>
-                  )}
-                </button>
-                <div>
-                  <p className="text-sm text-text">{STATE_LABELS[voiceState]}</p>
-                  <p className="text-xs text-subtle">Tap to preview the voice flow.</p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-xs font-mono uppercase tracking-wider text-subtle">Example command</p>
-                <div className="rounded-lg border border-border/70 bg-surface px-3 py-2 text-sm font-mono text-text">
-                  {EXAMPLE_COMMANDS[ticker % EXAMPLE_COMMANDS.length].command}
-                </div>
-              </div>
-            </Card>
-          </div>
-        </SectionContainer>
-      </section>
-
-      <section className="py-16">
-        <SectionContainer className="space-y-10">
-          <div className="max-w-2xl space-y-3">
-            <p className="text-xs font-mono uppercase tracking-wider text-subtle">System architecture</p>
-            <h2 className="text-[20px] font-display">How it works</h2>
-            <p className="text-[15px] text-muted">
-              A five-stage pipeline converts spoken requests into clean, readable briefings in under two seconds.
-            </p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-5">
-            {PIPELINE_STEPS.map((step, i) => (
-              <Card
-                key={i}
-                className={[
-                  'p-4 space-y-3 transition-colors duration-150',
-                  activeStep === i ? 'border-primary/40 bg-elevated' : 'border-border/70 bg-surface'
-                ].join(' ')}
-              >
-                <p className="text-xs font-mono uppercase tracking-wider text-subtle">{step.icon}</p>
-                <p className="text-sm font-medium text-text">{step.label}</p>
-                <p className="text-xs text-muted">{step.sub}</p>
-              </Card>
-            ))}
-          </div>
-        </SectionContainer>
-      </section>
-
-      <section className="py-16">
-        <SectionContainer className="space-y-10">
-          <div className="max-w-2xl space-y-3">
-            <p className="text-xs font-mono uppercase tracking-wider text-subtle">Natural language intelligence</p>
-            <h2 className="text-[20px] font-display">Understands intent, not just words</h2>
-            <p className="text-[15px] text-muted">
-              Groq Llama 3 interprets your sentence into a structured action, destination, and topic for fast navigation.
-            </p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            {INTENT_STEPS.map((item) => (
-              <Card key={item.step} className="p-6 space-y-3" variant="surface">
-                <p className="text-xs font-mono uppercase tracking-wider text-subtle">Step {item.step}</p>
-                <h3 className="text-lg font-display text-text">{item.label}</h3>
-                <p className="text-[15px] text-muted">{item.description}</p>
-              </Card>
-            ))}
-          </div>
-
-          <Card className="p-6" variant="elevated">
-            <p className="text-xs font-mono uppercase tracking-wider text-subtle mb-4">
-              Example extraction
-            </p>
-            <div className="grid gap-4 md:grid-cols-3">
-              {[
-                { label: 'Action', value: 'navigate' },
-                { label: 'Destination', value: 'dashboard' },
-                { label: 'Topic', value: 'space exploration' }
-              ].map((field) => (
-                <div key={field.label} className="rounded-lg border border-border/70 bg-surface p-4">
-                  <p className="text-xs font-mono uppercase tracking-wider text-subtle">{field.label}</p>
-                  <p className="text-sm text-text mt-2">{field.value}</p>
-                </div>
-              ))}
+                <p className="landing-preview-result-excerpt">
+                    {result.excerpt}
+                </p>
+                {!isProcessing && (
+                    <div className="landing-preview-result-meta">
+                        <span>{result.source}</span>
+                        <span className="landing-preview-result-dot" />
+                        <span>{result.readTime}</span>
+                        <span className="landing-preview-result-dot" />
+                        <span>{result.category}</span>
+                    </div>
+                )}
             </div>
-          </Card>
-        </SectionContainer>
-      </section>
+        </div>
+    );
+}
 
-      <section className="py-16">
-        <SectionContainer className="space-y-10">
-          <div className="max-w-2xl space-y-3">
-            <p className="text-xs font-mono uppercase tracking-wider text-subtle">Voice commands</p>
-            <h2 className="text-[20px] font-display">Speak naturally</h2>
-            <p className="text-[15px] text-muted">
-              No rigid phrasing needed. VoiceNews reads intent and responds with the right briefing.
-            </p>
-          </div>
+/* ─── Icons ─── */
+function ArrowDownIcon() {
+    return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 5v14" />
+            <path d="m19 12-7 7-7-7" />
+        </svg>
+    );
+}
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {EXAMPLE_COMMANDS.map((cmd, i) => (
-              <Card key={i} className="p-5 space-y-3" variant="surface">
-                <Badge variant="neutral">{cmd.tag}</Badge>
-                <p className="text-[15px] text-text">{cmd.command}</p>
-              </Card>
-            ))}
-          </div>
-        </SectionContainer>
-      </section>
-    </main>
-  );
+/* ─── Main Page ─── */
+export default function Home() {
+    return (
+        <main className="min-h-screen text-text">
+            {/* ─── Hero ─── */}
+            <section className="landing-hero">
+                <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10">
+                    <div className="landing-hero-grid">
+                        <FadeIn>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                <h1 className="landing-hero-headline font-display text-text">
+                                    Search the news<br />by speaking.
+                                </h1>
+                                <p className="landing-hero-sub text-muted">
+                                    VoxNews turns your spoken questions into curated briefings from trusted sources. No tabs, no feeds, no noise — just the stories that matter to you, read aloud or delivered as clean text.
+                                </p>
+                                <div className="landing-cta-group">
+                                    <Link to="/register" className="landing-cta-primary">
+                                        Get Started
+                                    </Link>
+                                    <a href="#how-it-works" className="landing-cta-secondary">
+                                        See How It Works
+                                        <ArrowDownIcon />
+                                    </a>
+                                </div>
+                            </div>
+                        </FadeIn>
+
+                        <FadeIn delay={2}>
+                            <ProductPreview />
+                        </FadeIn>
+                    </div>
+                </div>
+            </section>
+
+            {/* ─── How It Works ─── */}
+            <section className="landing-section" id="how-it-works">
+                <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10">
+                    <FadeIn>
+                        <p className="landing-section-label">How it works</p>
+                        <h2 className="landing-section-heading font-display text-text">Three steps, no learning curve</h2>
+                        <p className="landing-section-sub">
+                            Speak naturally, and VoxNews handles the rest. No commands to memorize, no menus to navigate.
+                        </p>
+                    </FadeIn>
+
+                    <div className="landing-how-grid">
+                        <FadeIn delay={1}>
+                            <div className="landing-how-item">
+                                <div className="landing-how-number">01</div>
+                                <div className="landing-how-content">
+                                    <h3 className="landing-how-title">Speak your question</h3>
+                                    <p className="landing-how-desc">
+                                        Ask anything naturally. The microphone captures your voice and transcribes it in real time.
+                                    </p>
+                                </div>
+                            </div>
+                        </FadeIn>
+                        <FadeIn delay={2}>
+                            <div className="landing-how-item">
+                                <div className="landing-how-number">02</div>
+                                <div className="landing-how-content">
+                                    <h3 className="landing-how-title">AI understands your intent</h3>
+                                    <p className="landing-how-desc">
+                                        A language model parses what you meant — not just the words — and routes you to the right results.
+                                    </p>
+                                </div>
+                            </div>
+                        </FadeIn>
+                        <FadeIn delay={3}>
+                            <div className="landing-how-item">
+                                <div className="landing-how-number">03</div>
+                                <div className="landing-how-content">
+                                    <h3 className="landing-how-title">Read or listen</h3>
+                                    <p className="landing-how-desc">
+                                        Articles are fetched, summarized, and presented in a clean reader. Play them aloud or read at your own pace.
+                                    </p>
+                                </div>
+                            </div>
+                        </FadeIn>
+                    </div>
+                </div>
+            </section>
+
+            {/* ─── Features — alternating rows ─── */}
+            <section className="landing-section">
+                <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10">
+                    <FadeIn>
+                        <div className="landing-feature-row">
+                            <div className="landing-feature-text">
+                                <p className="landing-section-label">Voice-first search</p>
+                                <h3 className="landing-feature-row-title font-display text-text">
+                                    Search for any topic by speaking naturally
+                                </h3>
+                                <p className="landing-feature-row-desc">
+                                    The AI pipeline transcribes your voice, interprets your intent, fetches relevant articles from live sources, and summarizes them — all from a single spoken sentence. No typing, no filters, no menus.
+                                </p>
+                            </div>
+                            <div className="landing-feature-visual">
+                                <div className="landing-feature-visual-inner">
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-primary)' }}>
+                                        <rect x="9" y="2" width="6" height="12" rx="3" />
+                                        <path d="M5 10a7 7 0 0 0 14 0" />
+                                        <line x1="12" y1="19" x2="12" y2="22" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </FadeIn>
+
+                    <FadeIn>
+                        <div className="landing-feature-row reverse">
+                            <div className="landing-feature-text">
+                                <p className="landing-section-label">Daily briefings</p>
+                                <h3 className="landing-feature-row-title font-display text-text">
+                                    A personalized morning briefing, built for you
+                                </h3>
+                                <p className="landing-feature-row-desc">
+                                    Choose your topics and receive a curated news briefing each morning. Listen to it as audio during your commute, or read the summary over coffee. Every source is linked and verifiable.
+                                </p>
+                            </div>
+                            <div className="landing-feature-visual">
+                                <div className="landing-feature-visual-inner">
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-primary)' }}>
+                                        <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" />
+                                        <path d="M18 14h-8" />
+                                        <path d="M15 18h-5" />
+                                        <path d="M10 6h8v4h-8V6Z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </FadeIn>
+
+                    <FadeIn>
+                        <div className="landing-feature-row">
+                            <div className="landing-feature-text">
+                                <p className="landing-section-label">Distraction-free reader</p>
+                                <h3 className="landing-feature-row-title font-display text-text">
+                                    Read articles without the noise
+                                </h3>
+                                <p className="landing-feature-row-desc">
+                                    Open any article in a clean reader view stripped of ads, popups, and clutter. Play it back as audio with one tap. Save articles into organized collections for later reference.
+                                </p>
+                            </div>
+                            <div className="landing-feature-visual">
+                                <div className="landing-feature-visual-inner">
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-primary)' }}>
+                                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </FadeIn>
+                </div>
+            </section>
+
+            {/* ─── CTA Block ─── */}
+            <section className="landing-cta-section">
+                <div className="landing-cta-gradient" />
+                <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10 relative z-10">
+                    <FadeIn>
+                        <div className="landing-cta-inner">
+                            <h2 className="landing-cta-block-heading font-display">
+                                Stop scrolling. Start asking.
+                            </h2>
+                            <p className="landing-cta-block-sub">
+                                Create a free account and start using your voice to search the news in under a minute.
+                            </p>
+                            <Link to="/register" className="landing-cta-primary">
+                                Create Free Account
+                            </Link>
+                        </div>
+                    </FadeIn>
+                </div>
+            </section>
+
+            {/* ─── Footer ─── */}
+            <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10">
+                <footer className="landing-footer">
+                    <span className="landing-footer-copy">VoxNews</span>
+                    <div className="landing-footer-links">
+                        <Link to="/login" className="landing-footer-link">Login</Link>
+                        <Link to="/register" className="landing-footer-link">Register</Link>
+                    </div>
+                </footer>
+            </div>
+        </main>
+    );
 }

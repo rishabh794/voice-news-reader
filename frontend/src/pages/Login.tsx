@@ -8,6 +8,8 @@ import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import { loginWithPassword, type AuthResponse } from '../services/api';
 import { getErrorMessage } from '../validation';
+import VoxLogo from '../components/ui/VoxLogo';
+import '../pages/Home.css';
 
 const EyeIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
@@ -69,24 +71,19 @@ const Login = () => {
 
     return (
         <div className="min-h-screen grid lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="relative hidden lg:flex flex-col justify-between bg-surface px-12 py-12">
-                <div className="text-sm font-mono uppercase tracking-wider text-subtle">VoiceNews</div>
-                <div className="space-y-6 max-w-md">
-                    <h1 className="text-4xl font-display text-text">
-                        Track the news that moves your industry.
+            <div className="auth-gradient-panel hidden lg:flex">
+                <div className="auth-gradient-bg" />
+                <div className="auth-gradient-orb auth-gradient-orb-1" />
+                <div className="auth-gradient-orb auth-gradient-orb-2" />
+                <div className="auth-gradient-orb auth-gradient-orb-3" />
+                <div className="auth-panel-content">
+                    <VoxLogo className="auth-logo-mark" />
+                    <h1 className="auth-panel-heading font-display">
+                        Your morning briefing,<br />ready when you are.
                     </h1>
-                    <p className="text-[15px] text-muted">
-                        VoiceNews delivers concise market intelligence with a calm, low-strain interface designed for long research sessions.
+                    <p className="auth-panel-sub">
+                        Sign in to access your personalized news feed, saved collections, and daily audio briefings.
                     </p>
-                    <div className="space-y-2 text-[15px] text-muted">
-                        <p>Built for analysts, researchers, and operators.</p>
-                        <p>Fast topic scanning with reliable source links.</p>
-                        <p>Voice-first briefings with premium readability.</p>
-                    </div>
-                </div>
-                <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute -right-24 top-10 h-72 w-72 rounded-full bg-primary/10 blur-3xl"></div>
-                    <div className="absolute bottom-10 left-10 h-64 w-64 rounded-full bg-success/10 blur-3xl"></div>
                 </div>
             </div>
 
@@ -143,7 +140,7 @@ const Login = () => {
                     </form>
 
                     <div className="mt-6 text-[15px] text-subtle">
-                        New to VoiceNews?{' '}
+                        New to VoxNews?{' '}
                         <Link to="/register" className="text-primary hover:text-text transition-colors duration-150">
                             Create an account
                         </Link>

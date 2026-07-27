@@ -50,7 +50,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             >
             <div className="flex h-16 items-center border-b border-border/70 px-6">
                 <Link to="/" className="font-display text-lg tracking-tight text-text">
-                    VoiceNews
+                    VoxNews
                 </Link>
             </div>
             <div className="flex-1 px-4 py-6 space-y-2">

@@ -94,7 +94,7 @@ const TopBar = ({
                             isAuthenticated ? 'lg:hidden' : ''
                         ].join(' ')}
                     >
-                        VoiceNews
+                        VoxNews
                     </Link>
                     {isAuthenticated && (
                         <form
