@@ -102,7 +102,8 @@ export const useSSESearch = (callbacks?: SSESearchCallbacks) => {
 
         dispatch({ type: 'START' });
 
-        let url = `http://localhost:5000/api/stream/search?query=${encodeURIComponent(query)}`;
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+        let url = `${baseUrl}/stream/search?query=${encodeURIComponent(query)}`;
         if (context) {
             url += `&context=${encodeURIComponent(JSON.stringify(context))}`;
         }
