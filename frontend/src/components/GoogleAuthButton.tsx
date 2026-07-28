@@ -50,14 +50,13 @@ const GoogleAuthButton = ({ mode, onAuthenticated, onError }: GoogleAuthButtonPr
                 <div className="h-px flex-1 bg-border/70"></div>
             </div>
 
-            <div className={`flex justify-center ${isSubmitting ? 'pointer-events-none opacity-70' : ''}`}>
+            <div className={`flex justify-center w-full ${isSubmitting ? 'pointer-events-none opacity-70' : ''}`}>
                 <GoogleLogin
                     onSuccess={handleGoogleSuccess}
                     onError={() => onError('Google sign-in popup was closed or failed.')}
                     text={buttonTextByMode[mode]}
                     shape="pill"
                     size="large"
-                    width="300"
                     theme="outline"
                     logo_alignment="left"
                 />

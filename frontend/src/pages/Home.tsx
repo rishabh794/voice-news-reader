@@ -91,21 +91,31 @@ function HeroVisual() {
             <motion.div
                 animate={{ y: [-10, 10, -10], rotate: [-2, 2, -2] }}
                 transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-                className="absolute top-1/4 -right-4 md:-right-8 bg-surface/80 backdrop-blur-md border border-border p-4 rounded-xl shadow-xl w-48"
+                className="absolute top-0 right-0 md:top-1/4 md:-right-8 bg-surface/80 backdrop-blur-md border border-border p-3 md:p-4 rounded-xl shadow-xl w-40 md:w-48 scale-75 md:scale-100 origin-top-right"
             >
-                <div className="h-2 w-1/3 bg-primary/60 rounded mb-3" />
-                <div className="h-2 w-full bg-border rounded mb-2" />
-                <div className="h-2 w-4/5 bg-border rounded" />
+                <div className="flex items-center gap-2 mb-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">Technology</span>
+                </div>
+                <div className="text-sm font-medium text-text leading-tight">
+                    Tech Giants Unveil On-Device AI
+                </div>
+                <div className="text-[10px] text-muted mt-2">Just now</div>
             </motion.div>
 
             <motion.div
                 animate={{ y: [10, -10, 10], rotate: [2, -2, 2] }}
                 transition={{ repeat: Infinity, duration: 5, ease: "easeInOut", delay: 1 }}
-                className="absolute bottom-1/4 -left-4 md:-left-8 bg-surface/80 backdrop-blur-md border border-border p-4 rounded-xl shadow-xl w-56"
+                className="absolute bottom-0 left-0 md:bottom-1/4 md:-left-8 bg-surface/80 backdrop-blur-md border border-border p-3 md:p-4 rounded-xl shadow-xl w-44 md:w-56 scale-75 md:scale-100 origin-bottom-left"
             >
-                <div className="h-2 w-1/4 bg-success/60 rounded mb-3" />
-                <div className="h-2 w-full bg-border rounded mb-2" />
-                <div className="h-2 w-3/4 bg-border rounded" />
+                <div className="flex items-center gap-2 mb-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-success" />
+                    <span className="text-[10px] font-semibold text-success uppercase tracking-wider">Environment</span>
+                </div>
+                <div className="text-sm font-medium text-text leading-tight">
+                    Global solar capacity hits historic milestone
+                </div>
+                <div className="text-[10px] text-muted mt-2">2h ago</div>
             </motion.div>
         </div>
     );
@@ -114,36 +124,64 @@ function HeroVisual() {
 /* ─── Pipeline Diagram Components ─── */
 function PipelineDiagram() {
     const nodes = [
-        { label: 'Voice Input', icon: AnimatedMicIcon, desc: 'You speak naturally' },
-        { label: 'AI Process', icon: AnimatedSparklesIcon, desc: 'Intent is understood' },
-        { label: 'Live Search', icon: AnimatedSearchIcon, desc: 'Fresh articles fetched' },
-        { label: 'Audio Playback', icon: AnimatedVolumeIcon, desc: 'Streamed to you' }
+        { label: 'Voice Input', icon: AnimatedMicIcon, desc: 'You speak naturally', color: 'from-blue-500/20' },
+        { label: 'AI Process', icon: AnimatedSparklesIcon, desc: 'Intent is understood', color: 'from-indigo-500/20' },
+        { label: 'Live Search', icon: AnimatedSearchIcon, desc: 'Fresh articles fetched', color: 'from-emerald-500/20' },
+        { label: 'Audio Playback', icon: AnimatedVolumeIcon, desc: 'Streamed to you', color: 'from-amber-500/20' }
     ];
 
     return (
-        <div className="w-full max-w-4xl mx-auto py-12">
-            <div className="flex flex-col md:flex-row justify-between items-stretch gap-6 relative">
-                {/* Horizontal connection line for desktop */}
-                <div className="hidden md:block absolute top-[40%] left-12 right-12 h-px bg-gradient-to-r from-transparent via-border to-transparent -translate-y-1/2 z-0" />
+        <div className="w-full max-w-5xl mx-auto py-20 px-4">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-6 relative">
+                {/* Animated Connection Track for Desktop */}
+                <div className="hidden md:block absolute top-1/2 left-8 right-8 h-[2px] bg-border/40 -translate-y-1/2 z-0 rounded-full overflow-hidden">
+                    <motion.div
+                        className="h-full w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent opacity-80"
+                        animate={{ x: ['-100%', '400%'] }}
+                        transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+                    />
+                </div>
+
+                {/* Animated Connection Track for Mobile (Vertical) */}
+                <div className="md:hidden absolute left-1/2 top-8 bottom-8 w-[2px] bg-border/40 -translate-x-1/2 z-0 rounded-full overflow-hidden">
+                    <motion.div
+                        className="w-full h-1/3 bg-gradient-to-b from-transparent via-primary to-transparent opacity-80"
+                        animate={{ y: ['-100%', '400%'] }}
+                        transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+                    />
+                </div>
 
                 {nodes.map((node, i) => (
                     <motion.div
-                        initial="rest"
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, margin: "-50px" }}
+                        transition={{ duration: 0.5, delay: i * 0.15 }}
                         whileHover="hover"
                         animate="rest"
-                        viewport={{ once: true, margin: "-100px" }}
                         key={node.label}
-                        className="flex flex-col items-center gap-4 bg-card/80 backdrop-blur-sm p-6 rounded-2xl border border-border/50 w-full md:w-52 text-center shadow-sm relative z-10 hover:shadow-xl hover:border-primary/30 transition-all duration-300 cursor-default group overflow-hidden select-none"
+                        className={`flex flex-col items-center gap-5 bg-card/40 backdrop-blur-xl p-6 rounded-3xl border border-white/5 w-full md:w-56 text-center shadow-2xl relative z-10 transition-all duration-500 cursor-default group overflow-hidden select-none
+                            ${i % 2 !== 0 ? 'md:translate-y-8' : 'md:-translate-y-8'}
+                            hover:-translate-y-2 hover:border-white/10 hover:bg-card/60
+                        `}
                     >
-                        {/* Hover flare */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        {/* Step Number */}
+                        <div className="absolute top-4 left-5 text-[11px] font-mono font-bold tracking-wider text-muted/30 group-hover:text-primary/60 transition-colors duration-300">
+                            STEP 0{i + 1}
+                        </div>
 
-                        <div className="w-16 h-16 rounded-full bg-surface border border-border/50 flex items-center justify-center mb-1 relative z-10 group-hover:border-primary/30 transition-colors">
+                        {/* Ambient Glow on Hover */}
+                        <div className={`absolute inset-0 bg-gradient-to-br ${node.color} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-xl pointer-events-none`} />
+
+                        {/* Icon Container */}
+                        <div className="w-16 h-16 rounded-2xl bg-surface/50 border border-white/5 flex items-center justify-center mt-4 mb-2 relative z-10 shadow-inner group-hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] group-hover:border-primary/30 transition-all duration-300 transform group-hover:scale-110">
                             <node.icon />
                         </div>
+                        
+                        {/* Text Content */}
                         <div className="relative z-10">
-                            <div className="font-semibold text-text mb-1">{node.label}</div>
-                            <div className="text-sm text-muted">{node.desc}</div>
+                            <div className="font-display font-semibold text-lg text-text mb-1.5 tracking-tight group-hover:text-primary transition-colors">{node.label}</div>
+                            <div className="text-sm text-muted leading-relaxed">{node.desc}</div>
                         </div>
                     </motion.div>
                 ))}
@@ -254,7 +292,7 @@ function MockupEmail() {
         <div className="w-full h-full bg-surface/50 border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col p-4 sm:p-8 relative select-none">
             <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-primary/10 rounded-full blur-[60px]" />
             <div className="bg-card rounded-xl flex-1 border border-border shadow-lg flex flex-col max-w-md mx-auto w-full overflow-hidden relative z-10 transform -rotate-1 hover:rotate-0 transition-transform duration-500 ease-out mt-4 mb-4">
-                <div className="bg-gradient-to-r from-primary to-indigo-600 p-6 text-center text-white relative overflow-hidden">
+                <div className="bg-gradient-to-r from-primary to-indigo-600 p-6 text-center text-white relative overflow-hidden shrink-0">
                     <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-xl" />
                     <Mail size={24} className="mx-auto mb-3 opacity-90" />
                     <h2 className="text-xl font-bold tracking-tight">Your Daily Briefing</h2>

@@ -65,8 +65,8 @@ const Register = () => {
     };
 
     return (
-        <div className="min-h-screen grid lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="auth-gradient-panel hidden lg:flex">
+        <div className="min-h-[calc(100vh-4rem)] flex flex-col lg:grid lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="auth-gradient-panel flex flex-col justify-center min-h-[40vh] lg:min-h-0">
                 <div className="auth-gradient-bg" />
                 <div className="auth-gradient-orb auth-gradient-orb-1" />
                 <div className="auth-panel-content p-4 sm:p-8 w-full">
@@ -84,8 +84,8 @@ const Register = () => {
                 </div>
             </div>
 
-            <div className="flex items-center justify-center px-6 py-12">
-                <Card className="w-full max-w-md p-8" variant="card">
+            <div className="flex items-center justify-center px-6 py-12 flex-1">
+                <Card className="w-full max-w-md p-6 sm:p-8" variant="card">
                     <div className="mb-6 space-y-2">
                         <h2 className="text-2xl font-display text-text">Create your account</h2>
                         <p className="text-[15px] text-muted">Set up your credentials to start tracking topics.</p>
