@@ -6,6 +6,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { isGibberish } from '../../services/isGibberish';
 import Button from './Button';
 import SidebarToggle from './sidebar-toggle';
+import VoxLogo from './VoxLogo';
 
 interface TopBarProps {
     showSidebarToggle?: boolean;
@@ -28,7 +29,6 @@ const TopBar = ({
     const { theme, toggleTheme } = useTheme();
     const isDark = theme === 'dark';
     const themeToggleLabel = isDark ? 'Switch to light mode' : 'Switch to dark mode';
-
     useEffect(() => {
         const currentQuery = new URLSearchParams(location.search).get('q') ?? '';
         setSearchTerm(currentQuery);
@@ -78,8 +78,10 @@ const TopBar = ({
 
     return (
         <header className="sticky top-0 z-30 border-b border-border/70 bg-surface/95 backdrop-blur">
-            <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between gap-4 px-6 lg:px-10">
-                <div className="flex items-center gap-3">
+            <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-6 lg:px-10">
+                
+                {/* Left: Logo */}
+                <div className="flex-1 flex items-center justify-start gap-3">
                     {showSidebarToggle && (
                         <SidebarToggle
                             open={isSidebarOpen}
@@ -90,46 +92,58 @@ const TopBar = ({
                     <Link
                         to="/"
                         className={[
-                            'rounded-md font-display text-base tracking-tight text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+                            'flex items-center gap-2 rounded-md font-display text-base tracking-tight text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
                             isAuthenticated ? 'lg:hidden' : ''
                         ].join(' ')}
                     >
-                        VoiceNews
+                        <VoxLogo className="w-7 h-7 text-text" />
+                        <span className="font-semibold text-lg">VoxNews</span>
                     </Link>
-                    {isAuthenticated && (
+                </div>
+
+                {/* Center: Links or Search */}
+                <div className="flex-1 flex items-center justify-center">
+                    {isAuthenticated ? (
                         <form
                             onSubmit={handleSearch}
-                            className="hidden md:flex items-center gap-2 rounded-lg border border-border/70 bg-base/70 px-3 py-2"
+                            className="hidden md:flex items-center gap-2 rounded-full border border-border bg-base/70 px-4 py-1.5 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/50 transition-all shadow-sm"
                         >
                             <input
                                 type="search"
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search topics"
-                                className="w-56 bg-transparent text-[15px] text-text placeholder:text-subtle focus-visible:outline-none"
+                                className="w-64 bg-transparent text-[15px] text-text placeholder:text-subtle focus-visible:outline-none"
                             />
-                            <Button type="submit" variant="outline" size="sm">
+                            <Button type="submit" variant="ghost" size="sm" className="h-7 px-3 text-muted hover:text-primary rounded-full">
                                 Search
                             </Button>
                         </form>
+                    ) : (
+                        <div className="hidden md:flex items-center justify-center gap-8">
+                            <Link to="/#how-it-works" className="text-sm font-medium text-muted hover:text-text transition-colors">How it works</Link>
+                            <Link to="/login" className="text-sm font-medium text-text hover:text-primary transition-colors">Log in</Link>
+                            <Link to="/register" className="text-sm font-medium text-text hover:text-primary transition-colors">Sign up</Link>
+                        </div>
                     )}
                 </div>
 
-                <div className="flex items-center gap-3">
+                {/* Right: Actions */}
+                <div className="flex-1 flex items-center justify-end gap-4">
                     <button
                         type="button"
                         onClick={toggleTheme}
                         aria-label={themeToggleLabel}
                         title={themeToggleLabel}
-                        className="group inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-surface/80 text-muted transition-colors duration-150 hover:bg-elevated hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                        className="group inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-text shadow-sm transition-all duration-300 hover:bg-primary/5 hover:text-primary hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
                     >
                         {isDark ? (
                             <svg
-                                className="h-4 w-4 transition-transform duration-150 group-hover:rotate-12"
+                                className="h-5 w-5 transition-transform duration-300 group-hover:rotate-45"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
-                                strokeWidth="1.6"
+                                strokeWidth="2"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 aria-hidden="true"
@@ -146,11 +160,11 @@ const TopBar = ({
                             </svg>
                         ) : (
                             <svg
-                                className="h-4 w-4 transition-transform duration-150 group-hover:-rotate-12"
+                                className="h-5 w-5 transition-transform duration-300 group-hover:-rotate-12"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
-                                strokeWidth="1.6"
+                                strokeWidth="2"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 aria-hidden="true"
@@ -177,22 +191,7 @@ const TopBar = ({
                                 Logout
                             </Button>
                         </>
-                    ) : (
-                        <div className="flex items-center gap-2">
-                            <Link
-                                to="/login"
-                                className="rounded-md px-1 py-1 text-[15px] text-muted hover:text-text transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-                            >
-                                Login
-                            </Link>
-                            <Link
-                                to="/register"
-                                className="rounded-lg border border-border/70 bg-elevated px-3 py-1.5 text-[15px] text-text transition-colors duration-150 hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-                            >
-                                Register
-                            </Link>
-                        </div>
-                    )}
+                    ) : null}
                 </div>
             </div>
 

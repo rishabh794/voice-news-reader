@@ -24,7 +24,7 @@ const AppShell = ({ children }: AppShellProps) => {
         return () => window.removeEventListener('api:ratelimit', handler);
     }, [showToast]);
     return (
-        <div className="min-h-screen bg-base text-text">
+        <div className="min-h-screen bg-base text-text overflow-x-clip">
             {isAuthenticated && (
                 <Sidebar
                     isOpen={isSidebarOpen}
@@ -37,7 +37,7 @@ const AppShell = ({ children }: AppShellProps) => {
                     isSidebarOpen={isSidebarOpen}
                     onSidebarToggle={() => setIsSidebarOpen((prev) => !prev)}
                 />
-                <main className="py-4 sm:py-8 pb-24 sm:pb-8">
+                <main className={isAuthenticated ? "py-4 sm:py-8 pb-24 sm:pb-8" : "pb-24 sm:pb-0"}>
                     {children}
                 </main>
             </div>

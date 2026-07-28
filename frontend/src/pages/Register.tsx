@@ -8,6 +8,8 @@ import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import { registerWithPassword, type AuthResponse } from '../services/api';
 import { getErrorMessage } from '../validation';
+import VoxLogo from '../components/ui/VoxLogo';
+import '../pages/Home.css';
 
 const EyeIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
@@ -63,30 +65,27 @@ const Register = () => {
     };
 
     return (
-        <div className="min-h-screen grid lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="relative hidden lg:flex flex-col justify-between bg-surface px-12 py-12">
-                <div className="text-sm font-mono uppercase tracking-wider text-subtle">VoiceNews</div>
-                <div className="space-y-6 max-w-md">
-                    <h1 className="text-4xl font-display text-text">
-                        Build a focused daily briefing in minutes.
-                    </h1>
-                    <p className="text-[15px] text-muted">
-                        Create your account and start tracking the signals that matter to your sector.
-                    </p>
-                    <div className="space-y-2 text-[15px] text-muted">
-                        <p>Fast topic search and summarized briefs.</p>
-                        <p>Voice playback for hands-free review.</p>
-                        <p>Clean archival history you can revisit anytime.</p>
+        <div className="min-h-[calc(100vh-4rem)] flex flex-col lg:grid lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="auth-gradient-panel flex flex-col justify-center min-h-[40vh] lg:min-h-0">
+                <div className="auth-gradient-bg" />
+                <div className="auth-gradient-orb auth-gradient-orb-1" />
+                <div className="auth-panel-content p-4 sm:p-8 w-full">
+                    <div className="mb-10 inline-flex items-center gap-3">
+                        <VoxLogo className="w-10 h-10 text-primary" />
+                        <span className="font-display font-bold text-2xl tracking-tight text-white dark:text-white">VoxNews</span>
                     </div>
-                </div>
-                <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute -right-24 top-10 h-72 w-72 rounded-full bg-primary/10 blur-3xl"></div>
-                    <div className="absolute bottom-10 left-10 h-64 w-64 rounded-full bg-warning/10 blur-3xl"></div>
+
+                    <h1 className="auth-panel-heading font-display">
+                        Start your <br />morning right.
+                    </h1>
+                    <p className="auth-panel-sub">
+                        Create your account and start tracking the topics that matter. Voice search, daily briefings, and a clean reader — all in one place.
+                    </p>
                 </div>
             </div>
 
-            <div className="flex items-center justify-center px-6 py-12">
-                <Card className="w-full max-w-md p-8" variant="card">
+            <div className="flex items-center justify-center px-6 py-12 flex-1">
+                <Card className="w-full max-w-md p-6 sm:p-8" variant="card">
                     <div className="mb-6 space-y-2">
                         <h2 className="text-2xl font-display text-text">Create your account</h2>
                         <p className="text-[15px] text-muted">Set up your credentials to start tracking topics.</p>

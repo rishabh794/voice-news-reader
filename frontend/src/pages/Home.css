@@ -1,0 +1,148 @@
+/* ─── Global Landing Styles ─── */
+
+.landing-mono-label {
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.75rem;
+}
+
+/* ─── Shared Background Gradients ─── */
+.landing-ambient-bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+
+.landing-ambient-bg::before {
+    content: '';
+    position: absolute;
+    top: -20%;
+    right: -10%;
+    width: 60%;
+    height: 60%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 12%, transparent) 0%, transparent 60%);
+    filter: blur(100px);
+}
+
+.landing-ambient-bg::after {
+    content: '';
+    position: absolute;
+    bottom: -10%;
+    left: -10%;
+    width: 50%;
+    height: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--color-success, #10B981) 8%, transparent) 0%, transparent 60%);
+    filter: blur(100px);
+}
+
+/* ─── Auth page gradients (Preserved) ─── */
+.auth-gradient-panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+    padding: 3rem;
+}
+
+.auth-gradient-bg {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(135deg,
+            var(--color-base) 0%,
+            var(--color-surface) 100%
+        );
+}
+
+:root:not(.dark) .auth-gradient-bg {
+    background:
+        linear-gradient(135deg,
+            #e8f0fe 0%,
+            #c9d8f0 25%,
+            #a8c4e6 50%,
+            #d1dff0 75%,
+            #e8f0fe 100%
+        );
+}
+
+.auth-gradient-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+}
+
+.auth-gradient-orb-1 {
+    width: 400px;
+    height: 400px;
+    top: -100px;
+    right: -80px;
+    background: color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+:root:not(.dark) .auth-gradient-orb-1 {
+    background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.auth-gradient-orb-2 {
+    width: 300px;
+    height: 300px;
+    bottom: -60px;
+    left: -40px;
+    background: color-mix(in srgb, #8b5cf6 25%, transparent);
+}
+
+:root:not(.dark) .auth-gradient-orb-2 {
+    background: color-mix(in srgb, #8b5cf6 15%, transparent);
+}
+
+.auth-gradient-orb-3 {
+    width: 200px;
+    height: 200px;
+    top: 40%;
+    left: 30%;
+    background: color-mix(in srgb, var(--color-success) 15%, transparent);
+}
+
+:root:not(.dark) .auth-gradient-orb-3 {
+    background: color-mix(in srgb, var(--color-success) 10%, transparent);
+}
+
+.auth-panel-content {
+    position: relative;
+    z-index: 1;
+    max-width: 540px;
+}
+
+.auth-logo-mark {
+    width: 56px;
+    height: 56px;
+    margin-bottom: 2.5rem;
+}
+
+.auth-panel-heading {
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    margin-bottom: 1rem;
+    color: #f5f7fa;
+}
+
+:root:not(.dark) .auth-panel-heading {
+    color: #0f172a;
+}
+
+.auth-panel-sub {
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+:root:not(.dark) .auth-panel-sub {
+    color: rgba(15, 23, 42, 0.6);
+}
