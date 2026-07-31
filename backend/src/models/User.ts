@@ -34,7 +34,8 @@ const userSchema = new mongoose.Schema({
     briefingPreferences: {
         type: briefingPreferencesSchema,
         default: () => ({ enabled: false, emailEnabled: false })
-    }
+    },
+    refreshTokens: { type: [String], default: [] }
 });
 
 export const User = mongoose.model('User', userSchema);

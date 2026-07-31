@@ -4,8 +4,14 @@ import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
 import { verifyGoogleIdToken } from '../services/googleAuthService.js';
 
-const createAuthToken = (userId: string): string =>
-    jwt.sign({ id: userId }, process.env.JWT_SECRET as string, { expiresIn: '14d' });
+import crypto from 'crypto';
+
+const createAccessToken = (userId: string): string =>
+    jwt.sign({ id: userId }, process.env.JWT_SECRET as string, { expiresIn: '15m' });
+
+const createRefreshToken = (): string => {
+    return crypto.randomBytes(40).toString('hex');
+};
 
 const isGoogleOnlyAccount = (user: any): boolean => {
     const hasLocalProvider = Boolean(user.providers?.local);
@@ -93,12 +99,23 @@ export const login = async (req: Request, res: Response): Promise<any> => {
             return res.status(400).json({ error: 'Invalid credentials' });
         }
 
-        const token = createAuthToken(String(user._id));
+        const accessToken = createAccessToken(String(user._id));
+        const refreshToken = createRefreshToken();
+        
+        user.refreshTokens.push(refreshToken);
+        await user.save();
 
-        res.cookie('token', token, {
+        res.cookie('token', accessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            sameSite: 'none',
+            maxAge: 15 * 60 * 1000 // 15 minutes
+        });
+
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'none',
             maxAge: 14 * 24 * 60 * 60 * 1000 // 14 days
         });
 
@@ -145,12 +162,23 @@ export const googleAuth = async (req: Request, res: Response): Promise<any> => {
 
         await user.save();
 
-        const token = createAuthToken(String(user._id));
+        const accessToken = createAccessToken(String(user._id));
+        const refreshToken = createRefreshToken();
+        
+        user.refreshTokens.push(refreshToken);
+        await user.save();
 
-        res.cookie('token', token, {
+        res.cookie('token', accessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            sameSite: 'none',
+            maxAge: 15 * 60 * 1000 // 15 minutes
+        });
+
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'none',
             maxAge: 14 * 24 * 60 * 60 * 1000 // 14 days
         });
 
@@ -190,12 +218,72 @@ export const me = async (req: Request, res: Response): Promise<any> => {
     }
 };
 
+// REFRESH CONTROLLER
+export const refresh = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const refreshToken = req.cookies?.refreshToken;
+        if (!refreshToken) {
+            return res.status(401).json({ error: 'No refresh token provided' });
+        }
+
+        const user = await User.findOne({ refreshTokens: refreshToken });
+        if (!user) {
+            // Possible token reuse / stolen token scenario
+            return res.status(401).json({ error: 'Invalid refresh token' });
+        }
+
+        // Rotate token
+        const newAccessToken = createAccessToken(String(user._id));
+        const newRefreshToken = createRefreshToken();
+
+        user.refreshTokens = user.refreshTokens.filter(rt => rt !== refreshToken);
+        user.refreshTokens.push(newRefreshToken);
+        await user.save();
+
+        res.cookie('token', newAccessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'none',
+            maxAge: 15 * 60 * 1000 // 15 minutes
+        });
+
+        res.cookie('refreshToken', newRefreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'none',
+            maxAge: 14 * 24 * 60 * 60 * 1000 // 14 days
+        });
+
+        res.json({ message: 'Token refreshed successfully' });
+    } catch (error) {
+        console.error('Refresh Error:', error);
+        res.status(500).json({ error: 'Server error during refresh' });
+    }
+};
+
 // LOGOUT CONTROLLER
 export const logout = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const refreshToken = req.cookies?.refreshToken;
+        if (refreshToken) {
+            await User.updateOne(
+                { refreshTokens: refreshToken },
+                { $pull: { refreshTokens: refreshToken } }
+            );
+        }
+    } catch (error) {
+        console.error('Logout error removing refresh token:', error);
+    }
+
     res.clearCookie('token', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax'
+        sameSite: 'none'
+    });
+    res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'none'
     });
     res.json({ message: 'Logged out successfully' });
 };
