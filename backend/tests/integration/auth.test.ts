@@ -15,7 +15,7 @@ describe('Auth Endpoints', () => {
                 });
 
             expect(res.status).toBe(201);
-            expect(res.body).toHaveProperty('message', 'User created successfully');
+            expect(res.body).toHaveProperty('message', 'User created successfully. Please check your email to verify your account.');
         });
 
         it('should fail if email is already taken', async () => {
@@ -39,6 +39,8 @@ describe('Auth Endpoints', () => {
                 .post('/api/auth/register')
                 .set('X-Requested-With', 'XMLHttpRequest')
                 .send({ email: 'test@example.com', password: 'password123' });
+
+            await User.updateOne({ email: 'test@example.com' }, { isEmailVerified: true });
         });
 
         it('should login and return access and refresh cookies', async () => {
@@ -66,6 +68,8 @@ describe('Auth Endpoints', () => {
                 .post('/api/auth/register')
                 .set('X-Requested-With', 'XMLHttpRequest')
                 .send({ email: 'test@example.com', password: 'password123' });
+
+            await User.updateOne({ email: 'test@example.com' }, { isEmailVerified: true });
 
             const res = await request(app)
                 .post('/api/auth/login')

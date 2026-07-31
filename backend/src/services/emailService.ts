@@ -8,7 +8,7 @@ const resend = process.env.RESEND_API_KEY
     ? new Resend(process.env.RESEND_API_KEY)
     : null;
 
-const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL || 'Voice News Reader <onboarding@resend.dev>';
+const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL || 'Voice News Reader <noreply@voxnews.site>';
 
 interface BriefingEmailData {
     date: string;
@@ -61,4 +61,40 @@ const formatDate = (isoDate: string): string => {
         year: 'numeric',
         timeZone: 'UTC'
     });
+};
+
+/**
+ * Send an email verification link to a user.
+ */
+export const sendVerificationEmail = async (to: string, token: string): Promise<void> => {
+    if (!resend) {
+        console.warn('[Email] Resend not configured. Skipping verification email. (Token: ' + token + ')');
+        return;
+    }
+
+    const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://voxnews.site' : 'http://localhost:5173');
+    const verificationLink = `${frontendUrl}/verify-email?token=${token}`;
+
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Verify your email address</h2>
+            <p>Welcome to Voice News Reader! Please click the button below to verify your email address and activate your account.</p>
+            <div style="margin: 30px 0;">
+                <a href="${verificationLink}" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Verify Email</a>
+            </div>
+            <p style="color: #666; font-size: 14px;">If you didn't create an account, you can safely ignore this email.</p>
+            <p style="color: #999; font-size: 12px; margin-top: 40px;">This link expires in 24 hours.</p>
+        </div>
+    `;
+
+    const { error } = await resend.emails.send({
+        from: FROM_ADDRESS,
+        to,
+        subject: 'Verify your email address - Voice News Reader',
+        html
+    });
+
+    if (error) {
+        throw new Error(`Resend API error: ${error.message}`);
+    }
 };

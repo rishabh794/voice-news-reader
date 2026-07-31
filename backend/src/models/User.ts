@@ -21,6 +21,9 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: false },
     googleId: { type: String, unique: true, sparse: true }, // sparse - in case if its null for 2 users
+    isEmailVerified: { type: Boolean, default: false },
+    verificationToken: { type: String, default: null },
+    verificationTokenExpiresAt: { type: Date, default: null },
     providers: { type: authProvidersSchema, default: () => ({ local: false, google: false }) },
     topicPreferences: {
         type: [String],

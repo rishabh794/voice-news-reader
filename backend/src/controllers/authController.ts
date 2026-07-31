@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
 import { verifyGoogleIdToken } from '../services/googleAuthService.js';
+import { sendVerificationEmail } from '../services/emailService.js';
 
 import crypto from 'crypto';
 
@@ -49,9 +50,15 @@ export const register = async (req: Request, res: Response): Promise<any> => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+        const verificationTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
         const newUser = new User({
             email,
             password: hashedPassword,
+            isEmailVerified: false,
+            verificationToken,
+            verificationTokenExpiresAt,
             providers: {
                 local: true,
                 google: false
@@ -59,7 +66,14 @@ export const register = async (req: Request, res: Response): Promise<any> => {
         });
         await newUser.save();
 
-        res.status(201).json({ message: 'User created successfully' });
+        try {
+            await sendVerificationEmail(email, verificationToken);
+        } catch (emailError) {
+            console.error('Failed to send verification email:', emailError);
+            // We still return 201, but the user will need to use "Resend Verification" later
+        }
+
+        res.status(201).json({ message: 'User created successfully. Please check your email to verify your account.' });
     } catch (error) {
         console.error('Registration Error:', error);
         if (isDuplicateKeyError(error)) {
@@ -97,6 +111,10 @@ export const login = async (req: Request, res: Response): Promise<any> => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(400).json({ error: 'Invalid credentials' });
+        }
+
+        if (!user.isEmailVerified) {
+            return res.status(403).json({ error: 'Please verify your email address to log in.', requiresVerification: true });
         }
 
         const accessToken = createAccessToken(String(user._id));
@@ -143,6 +161,7 @@ export const googleAuth = async (req: Request, res: Response): Promise<any> => {
             user = new User({
                 email: verifiedUser.email,
                 googleId: verifiedUser.googleId,
+                isEmailVerified: true, // Google verifies emails
                 providers: {
                     local: false,
                     google: true
@@ -286,4 +305,93 @@ export const logout = async (req: Request, res: Response): Promise<any> => {
         sameSite: 'none'
     });
     res.json({ message: 'Logged out successfully' });
+};
+
+// VERIFY EMAIL CONTROLLER
+export const verifyEmail = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const { token } = req.body;
+        if (!token || typeof token !== 'string') {
+            return res.status(400).json({ error: 'Verification token is required' });
+        }
+
+        const user = await User.findOne({
+            verificationToken: token,
+            verificationTokenExpiresAt: { $gt: new Date() }
+        });
+
+        if (!user) {
+            return res.status(400).json({ error: 'Invalid or expired verification token' });
+        }
+
+        // Mark user as verified
+        user.isEmailVerified = true;
+        user.verificationToken = null;
+        user.verificationTokenExpiresAt = null;
+
+        const accessToken = createAccessToken(String(user._id));
+        const refreshToken = createRefreshToken();
+        
+        user.refreshTokens.push(refreshToken);
+        await user.save();
+
+        res.cookie('token', accessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'none',
+            maxAge: 15 * 60 * 1000 // 15 minutes
+        });
+
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'none',
+            maxAge: 14 * 24 * 60 * 60 * 1000 // 14 days
+        });
+
+        res.json({ message: 'Email verified successfully', email: user.email, authProvider: 'local' });
+    } catch (error) {
+        console.error('Verify Email Error:', error);
+        res.status(500).json({ error: 'Server error during email verification' });
+    }
+};
+
+// RESEND VERIFICATION EMAIL CONTROLLER
+export const resendVerificationEmail = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const { email: rawEmail } = req.body;
+        const email = typeof rawEmail === 'string' ? rawEmail.toLowerCase().trim() : '';
+
+        if (!email) {
+            return res.status(400).json({ error: 'Email is required' });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            // Return success even if user doesn't exist for security (prevent email enumeration)
+            return res.json({ message: 'If an account exists, a verification email has been sent.' });
+        }
+
+        if (user.isEmailVerified) {
+            return res.status(400).json({ error: 'Email is already verified.' });
+        }
+
+        if (isGoogleOnlyAccount(user)) {
+            return res.status(400).json({ error: 'Google accounts are automatically verified.' });
+        }
+
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+        const verificationTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+        user.verificationToken = verificationToken;
+        user.verificationTokenExpiresAt = verificationTokenExpiresAt;
+        await user.save();
+
+        await sendVerificationEmail(email, verificationToken);
+
+        res.json({ message: 'If an account exists, a verification email has been sent.' });
+    } catch (error) {
+        console.error('Resend Verification Email Error:', error);
+        res.status(500).json({ error: 'Server error while resending verification email' });
+    }
 };
