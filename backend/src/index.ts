@@ -22,7 +22,7 @@ declare global {
 }
 
 app.use(cors({
-    origin: ['http://localhost:5173', 'https://voxnews.site', 'https://api.voxnews.site'],
+    origin: ['http://localhost:5173', 'https://voxnews.site', 'https://api.voxnews.site', 'https://voice-news-reader.vercel.app'],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
