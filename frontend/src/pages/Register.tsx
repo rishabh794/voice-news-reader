@@ -32,6 +32,7 @@ const Register = () => {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSuccess, setIsSuccess] = useState(false);
 
     const authContext = useContext(AuthContext);
     const { showToast } = useToast();
@@ -43,8 +44,7 @@ const Register = () => {
         setIsSubmitting(true);
         try {
             await registerWithPassword(email, password);
-            showToast('Registration successful! Please log in.', 'success');
-            navigate('/login');
+            setIsSuccess(true);
         } catch (err: unknown) {
             const errorMessage = getErrorMessage(err, 'Registration failed');
             showToast(errorMessage, 'error');
@@ -86,62 +86,83 @@ const Register = () => {
 
             <div className="flex items-center justify-center px-6 py-12 flex-1">
                 <Card className="w-full max-w-md p-6 sm:p-8" variant="card">
-                    <div className="mb-6 space-y-2">
-                        <h2 className="text-2xl font-display text-text">Create your account</h2>
-                        <p className="text-[15px] text-muted">Set up your credentials to start tracking topics.</p>
-                    </div>
-
-                    <form onSubmit={handleRegister} className="space-y-5">
-                        <Input
-                            type="email"
-                            label="Email"
-                            placeholder="name@company.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                        />
-
-                        <div className="space-y-2">
-                            <label className="text-xs font-mono uppercase tracking-wider text-subtle">
-                                Password
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    placeholder="********"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                    className="w-full rounded-lg border border-border/70 bg-surface px-3 py-2 pr-10 text-[15px] text-text placeholder:text-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary/50 transition-colors duration-150"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword((prevShowPassword) => !prevShowPassword)}
-                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                                    className="absolute inset-y-0 right-2 flex h-9 w-9 items-center justify-center text-subtle hover:text-text transition-colors duration-150"
-                                >
-                                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                                </button>
+                    {isSuccess ? (
+                        <div className="text-center space-y-6 py-8">
+                            <div className="mx-auto w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center">
+                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
                             </div>
+                            <div className="space-y-2">
+                                <h2 className="text-2xl font-display text-text">Check your email</h2>
+                                <p className="text-[15px] text-muted">
+                                    We've sent a verification link to <span className="font-semibold text-text">{email}</span>. Please click the link to activate your account.
+                                </p>
+                            </div>
+                            <Button variant="outline" className="w-full mt-4" onClick={() => navigate('/login')}>
+                                Return to login
+                            </Button>
                         </div>
+                    ) : (
+                        <>
+                            <div className="mb-6 space-y-2">
+                                <h2 className="text-2xl font-display text-text">Create your account</h2>
+                                <p className="text-[15px] text-muted">Set up your credentials to start tracking topics.</p>
+                            </div>
 
-                        <Button type="submit" className="w-full" disabled={isSubmitting}>
-                            {isSubmitting ? 'Creating account...' : 'Create account'}
-                        </Button>
+                            <form onSubmit={handleRegister} className="space-y-5">
+                                <Input
+                                    type="email"
+                                    label="Email"
+                                    placeholder="name@company.com"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                />
 
-                        <GoogleAuthButton
-                            mode="signup"
-                            onAuthenticated={handleGoogleAuthenticated}
-                            onError={(message) => showToast(message, 'error')}
-                        />
-                    </form>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-mono uppercase tracking-wider text-subtle">
+                                        Password
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type={showPassword ? 'text' : 'password'}
+                                            placeholder="********"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            required
+                                            className="w-full rounded-lg border border-border/70 bg-surface px-3 py-2 pr-10 text-[15px] text-text placeholder:text-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary/50 transition-colors duration-150"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword((prevShowPassword) => !prevShowPassword)}
+                                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                            className="absolute inset-y-0 right-2 flex h-9 w-9 items-center justify-center text-subtle hover:text-text transition-colors duration-150"
+                                        >
+                                            {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                                        </button>
+                                    </div>
+                                </div>
 
-                    <div className="mt-6 text-[15px] text-subtle">
-                        Already have an account?{' '}
-                        <Link to="/login" className="text-primary hover:text-text transition-colors duration-150">
-                            Sign in
-                        </Link>
-                    </div>
+                                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                                    {isSubmitting ? 'Creating account...' : 'Create account'}
+                                </Button>
+
+                                <GoogleAuthButton
+                                    mode="signup"
+                                    onAuthenticated={handleGoogleAuthenticated}
+                                    onError={(message) => showToast(message, 'error')}
+                                />
+                            </form>
+
+                            <div className="mt-6 text-[15px] text-subtle">
+                                Already have an account?{' '}
+                                <Link to="/login" className="text-primary hover:text-text transition-colors duration-150">
+                                    Sign in
+                                </Link>
+                            </div>
+                        </>
+                    )}
                 </Card>
             </div>
         </div>

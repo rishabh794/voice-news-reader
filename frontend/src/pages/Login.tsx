@@ -6,7 +6,7 @@ import GoogleAuthButton from '../components/GoogleAuthButton';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
-import { loginWithPassword, type AuthResponse } from '../services/api';
+import { loginWithPassword, resendVerificationEmail, type AuthResponse } from '../services/api';
 import { getErrorMessage } from '../validation';
 import VoxLogo from '../components/ui/VoxLogo';
 import '../pages/Home.css';
@@ -32,6 +32,8 @@ const Login = () => {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+    const [isResending, setIsResending] = useState(false);
 
     const authContext = useContext(AuthContext);
     const { showToast } = useToast();
@@ -50,11 +52,29 @@ const Login = () => {
 
             showToast('Login successful. Session initialized.', 'success');
             navigate('/dashboard');
-        } catch (err: unknown) {
+        } catch (err: any) {
             const errorMessage = getErrorMessage(err, 'Login failed');
             showToast(errorMessage, 'error');
+            
+            if (err?.response?.data?.requiresVerification) {
+                setUnverifiedEmail(email);
+            }
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleResendVerification = async () => {
+        if (!unverifiedEmail || isResending) return;
+        setIsResending(true);
+        try {
+            await resendVerificationEmail(unverifiedEmail);
+            showToast(`Verification email sent to ${unverifiedEmail}`, 'success');
+        } catch (err: unknown) {
+            const errorMessage = getErrorMessage(err, 'Failed to resend email');
+            showToast(errorMessage, 'error');
+        } finally {
+            setIsResending(false);
         }
     };
 
@@ -141,6 +161,22 @@ const Login = () => {
                             onError={(message) => showToast(message, 'error')}
                         />
                     </form>
+
+                    {unverifiedEmail && (
+                        <div className="mt-6 p-4 rounded-lg bg-primary/10 border border-primary/20 text-center space-y-3">
+                            <p className="text-[14px] text-text">
+                                Didn't receive the email or it expired?
+                            </p>
+                            <Button
+                                variant="outline"
+                                className="w-full"
+                                onClick={handleResendVerification}
+                                disabled={isResending}
+                            >
+                                {isResending ? 'Sending...' : 'Resend Verification Email'}
+                            </Button>
+                        </div>
+                    )}
 
                     <div className="mt-6 text-[15px] text-subtle">
                         New to VoxNews?{' '}

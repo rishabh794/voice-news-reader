@@ -69,3 +69,17 @@ export const fetchCurrentUser = async (): Promise<{ email: string }> => {
 export const logoutFromServer = async (): Promise<void> => {
     await API.post('/auth/logout');
 };
+
+export const verifyEmailToken = async (token: string): Promise<AuthResponse> => {
+    const response = await API.post('/auth/verify-email', { token });
+    return validateWithSchema(
+        authSchemas.authResponseSchema,
+        response.data,
+        'Invalid verification response from server.'
+    );
+};
+
+export const resendVerificationEmail = async (email: string): Promise<{ message: string }> => {
+    const response = await API.post('/auth/resend-verification', { email });
+    return response.data;
+};
