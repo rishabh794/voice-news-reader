@@ -72,7 +72,7 @@ export const sendVerificationEmail = async (to: string, token: string): Promise<
         return;
     }
 
-    const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://voxnews.site' : 'http://localhost:5173');
+    const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://voice-news-reader.vercel.app' : 'http://localhost:5173');
     const verificationLink = `${frontendUrl}/verify-email?token=${token}`;
 
     const html = `
