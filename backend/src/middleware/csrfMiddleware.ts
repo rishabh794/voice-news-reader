@@ -12,8 +12,11 @@ import type { Request, Response, NextFunction, RequestHandler } from 'express';
  */
 export const csrfProtection = (): RequestHandler => {
     return (req: Request, res: Response, next: NextFunction): void => {
-        // Skip for non-state-changing requests
-        if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+        // Skip for non-state-changing requests or QStash webhook endpoints
+        if (
+            ['GET', 'HEAD', 'OPTIONS'].includes(req.method) ||
+            req.path.includes('/cron/')
+        ) {
             next();
             return;
         }
