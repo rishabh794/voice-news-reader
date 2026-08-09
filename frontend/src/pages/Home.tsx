@@ -331,7 +331,7 @@ function MockupEmail() {
 export default function Home() {
 
     return (
-        <main className="min-h-screen text-text relative bg-base overflow-x-hidden">
+        <main className="min-h-screen text-text relative bg-base overflow-clip">
             <div className="landing-ambient-bg" />
 
             {/* 1. Hero */}

@@ -3,6 +3,8 @@ import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import { authenticateWithGoogle, type AuthResponse } from '../services/api';
 import { getErrorMessage } from '../validation';
 
+import { useTheme } from '../hooks/useTheme';
+
 type GoogleAuthMode = 'signin' | 'signup';
 
 interface GoogleAuthButtonProps {
@@ -17,6 +19,7 @@ const buttonTextByMode = {
 } as const;
 
 const GoogleAuthButton = ({ mode, onAuthenticated, onError }: GoogleAuthButtonProps) => {
+    const { theme } = useTheme();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 
@@ -57,7 +60,7 @@ const GoogleAuthButton = ({ mode, onAuthenticated, onError }: GoogleAuthButtonPr
                     text={buttonTextByMode[mode]}
                     shape="pill"
                     size="large"
-                    theme="outline"
+                    theme={theme === 'dark' ? 'filled_black' : 'outline'}
                     logo_alignment="left"
                 />
             </div>
