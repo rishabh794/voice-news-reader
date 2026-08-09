@@ -26,8 +26,13 @@ API.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
+        
+        const isAuthError = error.response?.status === 401;
+        const isTokenExpired = error.response?.data?.code === 'TOKEN_EXPIRED';
+        const isTokenMissing = error.response?.data?.error === 'Access denied. No token provided.';
+        const isRefreshEndpoint = originalRequest.url?.includes('/auth/refresh');
 
-        if (error.response?.status === 401 && error.response?.data?.code === 'TOKEN_EXPIRED' && !originalRequest._retry) {
+        if (isAuthError && (isTokenExpired || isTokenMissing) && !originalRequest._retry && !isRefreshEndpoint) {
             if (isRefreshing) {
                 return new Promise((resolve, reject) => {
                     failedQueue.push({ resolve, reject });

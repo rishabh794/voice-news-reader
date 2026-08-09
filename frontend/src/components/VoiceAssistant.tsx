@@ -23,6 +23,7 @@ const ordinalMap: Record<string, number> = {
 
 const VoiceAssistant = () => {
     const [isProcessing, setIsProcessing] = useState(false);
+    const [micPermission, setMicPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
     // Setting for VAD vs Classic
     const [useVad, setUseVad] = useState(true);
 
@@ -39,6 +40,31 @@ const VoiceAssistant = () => {
     const queryClient = useQueryClient();
     
     const session = useVoiceSession();
+
+    // Check mic permission on mount and listen for changes
+    useEffect(() => {
+        let cleanup: (() => void) | undefined;
+
+        const checkPermission = async () => {
+            try {
+                if (navigator.permissions && navigator.permissions.query) {
+                    const status = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+                    if (isMountedRef.current) setMicPermission(status.state as 'granted' | 'denied' | 'prompt');
+                    
+                    const onChange = () => {
+                        if (isMountedRef.current) setMicPermission(status.state as 'granted' | 'denied' | 'prompt');
+                    };
+                    status.addEventListener('change', onChange);
+                    cleanup = () => status.removeEventListener('change', onChange);
+                }
+            } catch {
+                // Permissions API not supported (e.g. some Safari versions) — we'll handle it at request time
+            }
+        };
+
+        checkPermission();
+        return () => cleanup?.();
+    }, []);
 
     useEffect(() => {
         const loadSetting = () => {
@@ -78,6 +104,51 @@ const VoiceAssistant = () => {
             abortControllerRef.current = null;
         }
         window.speechSynthesis.cancel();
+    };
+
+    /**
+     * Request microphone permission explicitly.
+     * Returns true if granted, false if denied/failed.
+     * On denial, shows a descriptive toast guiding the user.
+     */
+    const requestMicPermission = async (): Promise<boolean> => {
+        // If we already know it's denied, skip the getUserMedia call and show guidance immediately
+        if (micPermission === 'denied') {
+            showToast(
+                'Microphone access is blocked. Please tap the lock/site-settings icon in your browser\'s address bar, enable Microphone, then reload the page.',
+                'error'
+            );
+            return false;
+        }
+
+        try {
+            // This triggers the browser's native permission prompt if state is 'prompt'
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Permission granted — stop the test stream immediately
+            stream.getTracks().forEach(track => track.stop());
+            setMicPermission('granted');
+            return true;
+        } catch (err: any) {
+            setMicPermission('denied');
+
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                showToast(
+                    'Microphone permission was denied. To enable it, tap the lock/site-settings icon in your browser\'s address bar, allow Microphone, and reload.',
+                    'error'
+                );
+            } else if (err.name === 'NotFoundError') {
+                showToast(
+                    'No microphone found. Please connect a microphone and try again.',
+                    'error'
+                );
+            } else {
+                showToast(
+                    'Could not access microphone. Please check your browser and device settings.',
+                    'error'
+                );
+            }
+            return false;
+        }
     };
 
     const processAudio = async (audioBlob: Blob) => {
@@ -249,6 +320,10 @@ const VoiceAssistant = () => {
             console.log('Pausing VAD...');
             await vad.pause();
         } else {
+            // Check permission before starting VAD
+            const hasPermission = await requestMicPermission();
+            if (!hasPermission) return;
+
             cancelInFlight();
             console.log('Starting VAD...');
             try {
@@ -264,6 +339,10 @@ const VoiceAssistant = () => {
     const [isRecordingClassic, setIsRecordingClassic] = useState(false);
     
     const startRecordingClassic = async () => {
+        // Check permission before starting classic recording
+        const hasPermission = await requestMicPermission();
+        if (!hasPermission) return;
+
         cancelInFlight();
         
         try {
@@ -287,9 +366,17 @@ const VoiceAssistant = () => {
             if (isMountedRef.current) {
                 setIsRecordingClassic(true);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Microphone access denied or failed:", error);
-            showToast('Failed to start microphone. Please check permissions.', 'error');
+            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                setMicPermission('denied');
+                showToast(
+                    'Microphone permission was denied. To enable it, tap the lock/site-settings icon in your browser\'s address bar, allow Microphone, and reload.',
+                    'error'
+                );
+            } else {
+                showToast('Could not access microphone. Please check your device settings.', 'error');
+            }
         }
     };
 
