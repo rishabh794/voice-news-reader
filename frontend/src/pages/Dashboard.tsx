@@ -135,9 +135,15 @@ const Dashboard = () => {
             playSummaryAudio(summaryText);
         },
         onError: (errMsg) => {
-            setError(errMsg);
+            showToast(errMsg || 'Search failed. Please try again.', 'error');
             setLoading(false);
             stopAudio();
+            // Clear search state so UI falls back to feed view
+            setQuery('');
+            setSummary('');
+            setShowSummary(false);
+            setArticles([]);
+            setError('');
         },
         onComplete: (data) => {
             if (data) {
@@ -151,7 +157,7 @@ const Dashboard = () => {
     });
 
     // Derived mode state
-    const isSearchActive = Boolean(query.trim()) || articles.length > 0 || sse.isStreaming;
+    const isSearchActive = loading || articles.length > 0 || sse.isStreaming;
 
     // Topic & Feed Hooks
     const { topics, hasTopics, isLoading: isTopicsLoading, updateTopics, isUpdating: isTopicsUpdating } = useTopicPreferences();

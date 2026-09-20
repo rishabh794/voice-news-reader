@@ -6,7 +6,7 @@ dotenv.config();
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-const MODEL = 'llama-3.1-8b-instant';
+const MODEL = 'qwen/qwen3.8-27b';
 const LLM_TIMEOUT_MS = 20000;
 
 export const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
@@ -78,7 +78,7 @@ export const rewriteForGNews = async (topic: string, signal?: AbortSignal): Prom
             }, { signal }),
             LLM_TIMEOUT_MS
         );
-        
+
         const content = completion.choices[0]?.message?.content?.trim();
         // Remove quotes if the LLM wrapped the entire response in them
         if (content && content.startsWith('"') && content.endsWith('"') && content.match(/"/g)?.length === 2) {
