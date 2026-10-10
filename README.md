@@ -48,7 +48,7 @@ The system is split into a React frontend and an Express + MongoDB backend.
 - Upstash QStash (Cron scheduling & Webhooks)
 - Resend (Email delivery for daily briefings)
 - Upstash Redis (API Rate limiting)
-- Groq AI (`whisper-large-v3-turbo` for transcription, `llama-3.1-8b-instant` for NLP)
+- Groq AI (`whisper-large-v3-turbo` for transcription, `qwen/qwen3.8-27b` for NLP)
 - GNews API (News Aggregation)
 - Google Auth Library (OAuth token verification)
 - bcrypt + jsonwebtoken (`httpOnly` secure cookies)

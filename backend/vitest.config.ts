@@ -8,7 +8,10 @@ export default defineConfig({
         env: {
             REDIS_URL: 'redis://localhost:6379',
             JWT_SECRET: 'test_secret_key_that_is_at_least_32_chars_long_for_security',
-            NODE_ENV: 'test'
+            NODE_ENV: 'test',
+            RESEND_API_KEY: 'mock_resend_api_key_test',
+            GROQ_API_KEY: 'mock_groq_api_key_test',
+            GNEWS_API_KEY: 'mock_gnews_api_key_test'
         }
     },
 });

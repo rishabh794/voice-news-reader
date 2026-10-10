@@ -1,13 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { Groq } from 'groq-sdk';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+// Groq is globally mocked in tests/setup.ts to guarantee zero real AI credit usage
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || 'mock_groq_api_key' });
 const MODEL = 'qwen/qwen3.8-27b';
 
-describe('Groq Pipeline Integration (qwen/qwen3.8-27b)', () => {
+describe('Groq Pipeline Integration (Mocked)', () => {
     it('should return a non-empty chat response', async () => {
         const completion = await groq.chat.completions.create({
             model: MODEL,
