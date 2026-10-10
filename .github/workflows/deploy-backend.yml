@@ -60,11 +60,16 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-          script_stop: true
           script: |
             set -e
 
+            # Load NVM and Node/npm into PATH for non-interactive SSH sessions
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            export PATH="$PATH:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node 2>/dev/null | tail -n 1)/bin:/usr/local/bin:/usr/bin"
+
             echo "🚀 Starting deployment..."
+            echo "Node: $(node -v 2>/dev/null || echo 'not found') | npm: $(npm -v 2>/dev/null || echo 'not found')"
 
             # Navigate to project directory
             cd ~/voice-news-reader
